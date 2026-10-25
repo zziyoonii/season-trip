@@ -5,6 +5,7 @@ import { holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
 import { planLeave, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
+import ScrollPlane from "./ScrollPlane";
 import type { AlertMap, City, Result, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
@@ -290,6 +291,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         </p>
       </div>
 
+      <ScrollPlane />
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </>

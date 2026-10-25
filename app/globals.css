@@ -264,3 +264,14 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 .loader .bplane{width:22px;height:22px;margin:0}
 .brow{grid-template-columns:auto auto auto 1fr}
 .bstat{justify-self:end}
+
+/* 기본 스크롤바 숨기고 비행기 스크롤 표시 */
+html{scrollbar-width:none}
+html::-webkit-scrollbar{display:none}
+.splane{position:fixed;z-index:15;top:calc(76px + env(safe-area-inset-top,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));right:max(6px,env(safe-area-inset-right,0px));width:22px;pointer-events:none;opacity:0;transition:opacity .35s}
+.splane.on{opacity:1}
+.splane .strack,.splane .sdone{position:absolute;left:10px;width:2px;top:0;border-radius:1px}
+.splane .strack{bottom:0;background:repeating-linear-gradient(180deg,var(--muted) 0 5px,transparent 5px 10px);opacity:.45}
+.splane .sdone{background:var(--accent);opacity:.5}
+.splane svg{position:absolute;left:0;width:22px;height:22px;transform:rotate(135deg);filter:drop-shadow(0 2px 3px rgba(29,63,158,.35))}
+@media (prefers-reduced-motion:reduce){.splane{transition:none}}
