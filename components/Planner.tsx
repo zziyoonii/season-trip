@@ -24,7 +24,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const [end, setEnd] = useState("");
   const [taste, setTaste] = useState<Taste | null>(null);
   const [flight, setFlight] = useState(25);
-  const [flightNote, setFlightNote] = useState("날짜를 고르면 일정 길이에 맞춰 자동으로 정해줘요.");
+  const [flightNote, setFlightNote] = useState("날짜를 고르면 일정에 맞춰 정해줘요");
   const [query, setQuery] = useState<Query | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -122,7 +122,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       lastLen.current = n - 1;
       const v = autoFlight(n);
       setFlight(v);
-      setFlightNote(`${n}일 일정이라 ${v >= 25 ? "제한 없이" : `${v}시간 이내로`} 맞췄어요. 직접 바꿔도 돼요.`);
+      setFlightNote(`${n}일 일정 기준`);
     }
   }
   function onStart(v: string) {
@@ -149,8 +149,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       <div className="app">
         <header className="bar">
           <div className="logo"><Logo /><span>나가요<small>제철 여행지</small></span></div>
-          <span className="from">인천 출발</span>
-        </header>
+                  </header>
 
         <section className="card" aria-label="여행 조건">
           <div className="tabs" role="tablist" aria-label="찾는 방법">
@@ -211,7 +210,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
             <div className="fl-head"><label className="lab" htmlFor="flight">비행시간</label><b>{flight >= 25 ? "제한 없음" : `${flight}시간 이내`}</b></div>
             <input id="flight" className="flightbar" type="range" min={5} max={25} step={5} value={flight}
               style={{ ["--p" as string]: `${((flight - 5) / 20) * 100}%` }}
-              onChange={(ev) => { setFlight(+ev.target.value); setFlightNote("직접 정한 비행시간이에요."); }} />
+              onChange={(ev) => { setFlight(+ev.target.value); setFlightNote("직접 정함"); }} />
             <div className="ticks" aria-hidden="true"><span>5시간</span><span>10</span><span>15</span><span>20</span><span>제한 없음</span></div>
             <div className="auto">{flightNote}</div>
           </div>}
@@ -285,9 +284,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         </>
         )}
         <p className="foot">
-          기후는 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>(ERA5, CC BY 4.0)의 2021–2024년 일별 기록으로 낸 월 평균이에요.
-          여행경보는 외교부 공공데이터({alertDate} 기준)로, 출국권고(3단계) 이상이거나 특별여행주의보가 내려진 곳은 추천에서 빼요.
-          출발 전 <a href="https://www.0404.go.kr/" target="_blank" rel="noopener">해외안전여행</a>에서 최신 정보를 꼭 확인하세요.
+          기후 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · 여행경보 외교부({alertDate}) · 출발 전 <a href="https://www.0404.go.kr/" target="_blank" rel="noopener">해외안전여행</a> 확인
         </p>
       </div>
 
@@ -325,7 +322,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
   return (
     <article className="pass">
       <div className="ptop">
-        <div className="prow"><span className="k">딱 그때, 제철 여행지</span><span className="s">적합도 {r.score}</span></div>
+        <div className="prow"><span className="k">딱 그때, 제철 여행지</span></div>
         <div className="city"><h3>{city.name} <span aria-hidden="true">{city.emoji}</span></h3><span>{city.country}</span></div>
         <div className="route" aria-label={`인천에서 ${city.name}까지 약 ${city.flight}시간`}>
           <div><b>ICN</b><span>인천</span></div>
@@ -341,13 +338,8 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
       <div className="perf" aria-hidden="true"><i /><i /></div>
       <div className="pbody">
         <p className="why">{whyLine(r, taste)}</p>
-        <div className="pchips">
-          <div><b>{r.rain.toFixed(0)}일</b><span>한 달 중 {taste === "snow" ? "눈·비" : "비"} 오는 날</span></div>
-          <div><b>{r.day.toFixed(1)}시간</b><span>해 떠 있는 시간</span></div>
-        </div>
         <Notes r={r} alertDate={alertDate} />
         <Festivals r={r} q={q} />
-        <Ribbon r={r} />
         <button type="button" className="sharebtn" onClick={onShare}>✈️ 탑승권 자랑하기</button>
       </div>
     </article>
@@ -362,15 +354,14 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
       <summary>
         <span className="tbadge" style={{ ["--t" as string]: tempColor(r.hi) }}>{r.hi.toFixed(0)}°</span>
         <span className="nm"><b>{rank}. {r.city.name} {r.city.emoji}</b>
-          <span>{r.city.code} · {r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{r.festivals.length ? ` · 축제 ${r.festivals.length}개` : ""}{alert ? " · ⚠️ 여행자제" : ""}</span>
+          <span>{r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{alert ? " · ⚠️ 여행자제" : ""}</span>
         </span>
-        <span className="rk"><b>{r.score}</b><svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></span>
+        <span className="rk"><svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></span>
       </summary>
       <div className="body">
-        <p className="why">{whyLine(r, taste)} 한 달 중 {taste === "snow" ? "눈·비" : "비"} 오는 날 {r.rain.toFixed(0)}일, 해는 {r.day.toFixed(1)}시간 떠 있어요.</p>
+        <p className="why">{whyLine(r, taste)}</p>
         <Notes r={r} alertDate={alertDate} />
         {open && <Festivals r={r} q={q} />}
-        <Ribbon r={r} />
       </div>
     </details>
   );
@@ -416,8 +407,9 @@ function Festivals({ r, q }: { r: Result; q: Query }) {
   return (
     <div className="fests">
       {r.festivals.map((f) => (
-        <div className="fest" key={f.title}><span className="em" aria-hidden="true">🎉</span><div><b>{f.title}</b><span>{f.when} · 매년 열리는 행사라 올해 날짜를 확인하세요</span></div></div>
+        <div className="fest" key={f.title}><span className="em" aria-hidden="true">🎉</span><div><b>{f.title}</b><span>{f.when}</span></div></div>
       ))}
+      <div className="src">매년 열리는 행사라 올해 날짜는 따로 확인해 주세요</div>
     </div>
   );
 }
