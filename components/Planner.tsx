@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
 import { holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
-import { planLeave, type LeavePlan, type LeaveWindow } from "@/lib/leave";
+import { planLeave, leaveRanges, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
 import type { AlertMap, City, Result, Taste } from "@/lib/types";
@@ -322,7 +322,7 @@ function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindo
       <header><span className="ptag" aria-hidden="true">{tag}</span><div><b>{plan.title}</b><span>{plan.desc}</span></div></header>
       {plan.picks.map(({ w, best }) => (
         <button key={iso(w.start)} type="button" className="trip" onClick={() => onPick(w)}>
-          <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{w.len}일 쉬고 연차 {w.used}일</small></span>
+          <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{w.len}일 쉬고 연차 {w.used}일</small><small className="lv">연차 쓰는 날 {leaveRanges(w)}</small></span>
           {best ? (
             <span className="dest"><i aria-hidden="true">{best.city.emoji}</i><span><b>{best.city.name}</b><small>{best.hi.toFixed(0)}° · {best.city.flight}시간</small></span></span>
           ) : <span className="dest none">맞는 곳이 없어요</span>}

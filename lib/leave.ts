@@ -61,3 +61,17 @@ export function planLeave(today: Date, deadline: Date, n: number): LeavePlan[] {
   const seen = new Set<string>();
   return plans.filter((p) => { const k = p.windows.map((w) => iso(w.start) + iso(w.end)).join("|"); if (seen.has(k)) return false; seen.add(k); return true; });
 }
+
+/** 실제로 연차를 쓰는 날을 묶어서 "12/21~24, 12/28~31" 처럼 */
+export function leaveRanges(w: LeaveWindow): string {
+  const days: Date[] = [];
+  for (let d = new Date(w.start); d <= w.end; d = addDays(d, 1)) if (!isOff(d)) days.push(new Date(d));
+  const runs: [Date, Date][] = [];
+  for (const d of days) {
+    const last = runs[runs.length - 1];
+    // 사이에 쉬는 날만 끼어 있으면(예: 주말) 다른 묶음으로 나눠요 — 하루 차이일 때만 이어 붙임
+    if (last && dayNum(d) - dayNum(last[1]) === 1) last[1] = d; else runs.push([d, d]);
+  }
+  const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return runs.map(([a, b]) => a.getTime() === b.getTime() ? md(a) : a.getMonth() === b.getMonth() ? `${md(a)}~${b.getDate()}` : `${md(a)}~${md(b)}`).join(", ");
+}
