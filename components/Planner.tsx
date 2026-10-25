@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
-import { holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
+import { PUBLIC_HOLIDAYS, holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
 import { planLeave, leaveRanges, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
@@ -29,6 +29,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [holOpen, setHolOpen] = useState(false);
+  const [calOpen, setCalOpen] = useState<null | "start" | "end">(null);
   const [shareFor, setShareFor] = useState<Result | null>(null);
   const lastLen = useRef(7);
   // 연차 소진 모드
@@ -184,8 +185,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
           <div className="block">
             <p className="lab">여행 기간</p>
             <div className="dates">
-              <DateBox label="가는 날" value={start} min={today} onChange={onStart} />
-              <DateBox label="오는 날" value={end} min={start || today} err={dateErr} onChange={(v) => applyDates(start, v)} />
+              <DateBtn label="가는 날" value={start} onClick={() => setCalOpen("start")} />
+              <DateBtn label="오는 날" value={end} err={dateErr} onClick={() => setCalOpen(start ? "end" : "start")} />
             </div>
             <div className={`days${dateErr ? " err" : ""}`}>{dateErr ? "오는 날이 가는 날보다 빨라요. 날짜를 다시 골라주세요." : hasDates ? `${days - 1}박 ${days}일${days >= 62 ? " · 최대 62일까지 계산해요" : ""}` : <span className="hint">가는 날과 오는 날을 골라주세요</span>}</div>
             <button type="button" className="hollink" onClick={() => setHolOpen(true)}>
@@ -290,6 +291,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
       </div>
 
       <ScrollPlane />
+      {calOpen && <RangeSheet today={today} start={start} end={end} phase={calOpen} onDone={(a, b) => { track("date_pick", { nights: Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 864e5) }); applyDates(a, b); setCalOpen(null); }} onClose={() => setCalOpen(null)} />}
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </div>
@@ -310,6 +312,17 @@ function DateBox({ label, value, min, err, onChange }: { label: string; value: s
         onChange={(ev) => ev.target.value && onChange(ev.target.value)}
         onClick={(ev) => { try { (ev.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* 지원 안 하면 기본 동작 */ } }} />
     </label>
+  );
+}
+
+/** 가는 날·오는 날 칸. 누르면 한 달력에서 둘 다 고르는 시트가 열려요 */
+function DateBtn({ label, value, err, onClick }: { label: string; value: string; err?: boolean; onClick: () => void }) {
+  const d = value ? parseDate(value) : null;
+  return (
+    <button type="button" className={`dbox${err ? " err" : ""}${d ? "" : " blank"}`} onClick={onClick}>
+      <span>{label}</span>
+      <b className="dval">{d ? `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})` : "날짜 선택"}</b>
+    </button>
   );
 }
 
@@ -527,6 +540,66 @@ function useSheet(onClose: () => void) {
     document.addEventListener("keydown", k);
     return () => { if (sc) sc.style.overflowY = prev; document.removeEventListener("keydown", k); };
   }, [onClose]);
+}
+
+/** 한 달력에서 가는 날 → 오는 날 순서로 두 번 누르면 끝 (최대 62일) */
+function RangeSheet({ today, start, end, phase, onDone, onClose }: { today: string; start: string; end: string; phase: "start" | "end"; onDone: (a: string, b: string) => void; onClose: () => void }) {
+  useSheet(onClose);
+  const [a, setA] = useState(start);
+  const [b, setB] = useState(phase === "end" ? "" : end);
+  const [pickEnd, setPickEnd] = useState(phase === "end" && !!start);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const t0 = parseDate(today);
+  const months = useMemo(() => Array.from({ length: 13 }, (_, i) => new Date(t0.getFullYear(), t0.getMonth() + i, 1)), [today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const maxEnd = a && pickEnd ? iso(addDays(parseDate(a), 61)) : "";
+  useEffect(() => {
+    // 이미 고른 날이 있으면 그 달로 스크롤
+    const key = (start || today).slice(0, 7);
+    scrollRef.current?.querySelector(`[data-m="${key}"]`)?.scrollIntoView({ block: "start" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  function tap(v: string) {
+    if (!pickEnd || !a || v < a) { setA(v); setB(""); setPickEnd(true); return; }
+    setB(v); setPickEnd(false);
+    setTimeout(() => onDone(a, v), 260);
+  }
+  const fmt = (v: string) => { const d = parseDate(v); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})`; };
+  const n = a && b ? Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 864e5) + 1 : 0;
+  return (
+    <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet calsheet" role="dialog" aria-modal="true" aria-labelledby="calTitle">
+        <div className="calhead">
+          <h3 id="calTitle">{!a ? "가는 날을 골라주세요" : pickEnd ? "오는 날을 골라주세요" : `${n - 1}박 ${n}일`}</h3>
+          <div className="calsel">
+            <span className={pickEnd || !a ? "" : "on"}><small>가는 날</small><b>{a ? fmt(a) : "—"}</b></span>
+            <i aria-hidden="true">→</i>
+            <span className={b ? "on" : ""}><small>오는 날</small><b>{b ? fmt(b) : "—"}</b></span>
+          </div>
+          <div className="calwd" aria-hidden="true">{[...WD].map((w, i) => <span key={w} className={i === 0 ? "sun" : i === 6 ? "sat" : ""}>{w}</span>)}</div>
+        </div>
+        <div className="calbody" ref={scrollRef}>
+          {months.map((m) => {
+            const y = m.getFullYear(), mo = m.getMonth(), last = new Date(y, mo + 1, 0).getDate();
+            return (
+              <section key={`${y}-${mo}`} data-m={`${y}-${String(mo + 1).padStart(2, "0")}`} className="calm">
+                <h4>{y !== t0.getFullYear() ? `${y}년 ` : ""}{mo + 1}월</h4>
+                <div className="calg">
+                  {Array.from({ length: m.getDay() }, (_, i) => <span key={`b${i}`} />)}
+                  {Array.from({ length: last }, (_, i) => {
+                    const d = new Date(y, mo, i + 1), v = iso(d), dow = d.getDay();
+                    const off = v < today || (!!maxEnd && v > maxEnd);
+                    const cls = ["cd", dow === 0 || PUBLIC_HOLIDAYS.has(v) ? "sun" : dow === 6 ? "sat" : "",
+                      v === a ? "a" : "", v === b ? "b" : "", a && b && v > a && v < b ? "in" : "", a && b && a !== b && v === a ? "ra" : "", a && b && a !== b && v === b ? "rb" : "", v === today ? "today" : ""].filter(Boolean).join(" ");
+                    return <button key={v} type="button" className={cls} disabled={off} aria-label={fmt(v)} aria-pressed={v === a || v === b} onClick={() => tap(v)}>{i + 1}</button>;
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+        <button type="button" className="holclose" onClick={onClose}>닫기</button>
+      </div>
+    </div>
+  );
 }
 
 function HolidaySheet({ today, start, end, onPick, onClose }: { today: Date; start: string; end: string; onPick: (a: string, b: string) => void; onClose: () => void }) {
