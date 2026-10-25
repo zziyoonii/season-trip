@@ -188,6 +188,8 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 @media (prefers-reduced-motion:no-preference){.hero,.item{animation:up .35s ease both}@keyframes up{from{transform:translateY(8px)}to{transform:none}}}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .foot a{color:inherit}
+.maker{font-size:12px;color:var(--muted);margin:14px 4px 0}
+.maker a{color:inherit;font-weight:700;text-decoration:none;border-bottom:1px solid currentColor}
 .src{font-size:12px;color:var(--muted);line-height:1.6}
 .src a{color:var(--sub)}
 .warn small{font-weight:400;opacity:.8}
