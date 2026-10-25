@@ -13,10 +13,10 @@ const WD = "일월화수목금토";
 const md = (d: Date) => `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 const dl = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}(${WD[d.getDay()]})`;
 
-interface Props { cities: City[]; seoulHi: number[]; alerts: AlertMap; alertDate: string; alertLive: boolean; today: string }
+interface Props { cities: City[]; seoulHi: number[]; alerts: AlertMap; alertDate: string; alertLive: boolean; today: string; initialMode?: "dates" | "leave" }
 interface Query { start: string; end: string; taste: Taste; flight: number }
 
-export default function Planner({ cities, seoulHi, alerts, alertDate, today }: Props) {
+export default function Planner({ cities, seoulHi, alerts, alertDate, today, initialMode = "dates" }: Props) {
   const todayD = parseDate(today);
 
   // 처음엔 비어 있어요. 날짜·날씨를 고르고 "찾기"를 눌러야 결과가 나와요
@@ -32,7 +32,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const [shareFor, setShareFor] = useState<Result | null>(null);
   const lastLen = useRef(7);
   // 연차 소진 모드
-  const [mode, setMode] = useState<"dates" | "leave">("dates");
+  const [mode, setMode] = useState<"dates" | "leave">(initialMode);
   const [leaveN, setLeaveN] = useState(0);
   const [deadline, setDeadline] = useState(`${today.slice(0, 4)}-12-31`);
   const [leaveQ, setLeaveQ] = useState<{ n: number; deadline: string; taste: Taste } | null>(null);
