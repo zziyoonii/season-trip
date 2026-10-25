@@ -9,7 +9,7 @@ const lastDay = (y: number, m: number) => new Date(y, m, 0).getDate();
 // 도시 × (시작 월 ~ 끝 월) 단위로 일주일 캐시 → 같은 "11월 홍콩"은 한 번만 검색
 const cached = unstable_cache(
   async (city: string, country: string, from: string, to: string) => findFestivals(city, country, from, to),
-  ["festivals-v3"], // v3: 한국어·날짜(start/end) 형식으로 바뀌어서 버전 올림
+  ["festivals-v4"], // v4: Interactions API 로 바꿈
   { revalidate: 60 * 60 * 24 * 7 },
 );
 

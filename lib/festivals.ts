@@ -61,9 +61,55 @@ export function inTrip(items: LiveFestival[], start: string, end: string) {
   return items.filter((f) => f.start <= end && f.end >= start).slice(0, 4);
 }
 
+/** 응답 JSON 전체를 돌면서 검색어·인용·검색 추천·본문을 모아요 (필드 이름이 조금 달라도 버티게) */
+function walk(node: any, out: { text: string[]; queries: string[]; cites: { title: string; url: string }[]; sugg: string[] }) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) { node.forEach((n) => walk(n, out)); return; }
+  const t = node.type;
+  if (t === "google_search_call") {
+    const q = node.arguments?.queries ?? node.queries;
+    if (Array.isArray(q)) out.queries.push(...q.map(String));
+  }
+  if (t === "url_citation" && node.url) out.cites.push({ title: String(node.title ?? "출처"), url: String(node.url) });
+  const s = node.search_suggestions ?? node.searchSuggestions;
+  if (typeof s === "string" && s.trim()) out.sugg.push(s);
+  if (t === "text" && typeof node.text === "string") out.text.push(node.text);
+  for (const [k, v] of Object.entries(node)) if (k !== "text" && v && typeof v === "object") walk(v, out);
+}
+
+/** Gemini 3 이후 문서 기준: Interactions API + {"type":"google_search"} */
+async function viaInteractions(key: string, city: string, country: string, start: string, end: string): Promise<FestivalAnswer> {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({ model: MODEL, input: `${SYSTEM}\n\n${prompt(city, country, start, end)}`, tools: [{ type: "google_search" }] }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Gemini interactions HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const out = { text: [] as string[], queries: [] as string[], cites: [] as { title: string; url: string }[], sugg: [] as string[] };
+  walk(data.steps ?? data.outputs ?? data, out);
+  const seen = new Set<string>();
+  const sources = out.cites.filter((c) => { if (seen.has(c.url)) return false; seen.add(c.url); return true; }).slice(0, 4);
+  const grounded = out.queries.length > 0 || sources.length > 0;
+  if (!grounded) console.warn(`[festivals] ${city} ${start}~${end}: 검색 없이 답했어요 (interactions, 응답 키: ${Object.keys(data).join(",")})`);
+  return { items: parseItems(out.text.join("")), sources, suggestionsHtml: out.sugg[0] ?? null, grounded, queries: out.queries, model: MODEL };
+}
+
 export async function findFestivals(city: string, country: string, start: string, end: string): Promise<FestivalAnswer | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
+  try {
+    const a = await viaInteractions(key, city, country, start, end);
+    if (a.grounded) return a;
+  } catch (e) {
+    console.warn("[festivals] interactions 실패, generateContent 로 다시 시도:", String(e).slice(0, 200));
+  }
+  return viaGenerateContent(key, city, country, start, end);
+}
+
+/** 예전 방식(generateContent + groundingMetadata). 새 방식이 안 될 때 대비 */
+async function viaGenerateContent(key: string, city: string, country: string, start: string, end: string): Promise<FestivalAnswer> {
   const res = await fetch(ENDPOINT(MODEL), {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
@@ -73,8 +119,7 @@ export async function findFestivals(city: string, country: string, start: string
       tools: [{ google_search: {} }],
       generationConfig: { temperature: 0.2 },
     }),
-    // 같은 도시·같은 달 질문은 일주일 동안 다시 검색하지 않아요
-    next: { revalidate: 60 * 60 * 24 * 7 },
+    cache: "no-store", // 캐시는 route 의 unstable_cache 가 맡아요
   });
   if (!res.ok) throw new Error(`Gemini HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
