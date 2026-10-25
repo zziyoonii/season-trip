@@ -287,3 +287,16 @@ html,body{height:100%;overflow:hidden}
   .splane .strack,.splane .sdone{left:6.5px;width:1px}
   .splane svg{width:14px;height:14px}
 }
+/* 비행기 스크롤 표시 v2: 흰 배지 + 부드럽게 따라오기 */
+.splane{width:34px;right:max(4px,env(safe-area-inset-right,0px))}
+.splane .strack,.splane .sdone{left:16px;width:2px}
+.splane .sdone{transition:height .45s cubic-bezier(.2,.8,.2,1)}
+.splane svg{position:static;width:20px;height:20px;filter:none;transition:transform .3s ease}
+.splane .sbadge{position:absolute;left:0;width:34px;height:34px;margin-top:-17px;border-radius:50%;background:var(--card);box-shadow:0 4px 14px -4px rgba(29,63,158,.45),0 0 0 1px var(--line);display:grid;place-items:center;transition:top .45s cubic-bezier(.2,.8,.2,1)}
+@media (max-width:600px){
+  .splane{width:28px;right:max(2px,env(safe-area-inset-right,0px))}
+  .splane .strack,.splane .sdone{left:13.5px;width:1.5px}
+  .splane .sbadge{width:28px;height:28px;margin-top:-14px}
+  .splane svg{width:17px;height:17px}
+}
+@media (prefers-reduced-motion:reduce){.splane .sbadge,.splane .sdone,.splane svg{transition:none}}
