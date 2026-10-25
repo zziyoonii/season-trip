@@ -10,8 +10,9 @@ export default function ScrollPlane() {
   const [can, setCan] = useState(false);
   const t = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
+    const el = document.getElementById("scroller");
+    if (!el) return;
     const onScroll = () => {
-      const el = document.documentElement;
       const max = el.scrollHeight - el.clientHeight;
       setCan(max > 40);
       setP(max > 0 ? el.scrollTop / max : 0);
@@ -19,16 +20,16 @@ export default function ScrollPlane() {
       clearTimeout(t.current);
       t.current = setTimeout(() => setShow(false), 900);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
-    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); clearTimeout(t.current); };
+    return () => { el.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); clearTimeout(t.current); };
   }, []);
   if (!can) return null;
   return (
     <div className={`splane${show ? " on" : ""}`} aria-hidden="true">
       <i className="strack" />
       <i className="sdone" style={{ height: `calc(${p * 100}% )` }} />
-      <svg viewBox="0 0 24 24" style={{ top: `calc(${p * 100}% - 11px)` }}><path d={PLANE_D} fill="var(--accent)" /></svg>
+      <svg viewBox="0 0 24 24" style={{ top: `calc(${p * 100}% - 7px)` }}><path d={PLANE_D} fill="var(--accent)" /></svg>
     </div>
   );
 }

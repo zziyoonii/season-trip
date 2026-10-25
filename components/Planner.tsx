@@ -145,7 +145,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const missing = !hasDates ? "여행 날짜를 골라주세요" : dateErr ? "날짜를 다시 확인해 주세요" : !taste ? "원하는 날씨를 골라주세요" : "";
 
   return (
-    <>
+    <div className="scroller" id="scroller">
       <div className="app">
         <header className="bar">
           <div className="logo"><Logo /><span>나가요<small>제철 여행지</small></span></div>
@@ -294,7 +294,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       <ScrollPlane />
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
-    </>
+    </div>
   );
 }
 
@@ -487,10 +487,11 @@ function Loader({ codes, target, label }: { codes: string[]; target: City | null
 
 function useSheet(onClose: () => void) {
   useEffect(() => {
-    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    const sc = document.getElementById("scroller");
+    const prev = sc?.style.overflowY ?? ""; if (sc) sc.style.overflowY = "hidden";
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", k);
-    return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", k); };
+    return () => { if (sc) sc.style.overflowY = prev; document.removeEventListener("keydown", k); };
   }, [onClose]);
 }
 
