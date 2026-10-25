@@ -51,7 +51,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     const { weights, days } = monthWeights(qs, qe);
     const mid = new Date((qs.getTime() + Math.min(qe.getTime(), qs.getTime() + 61 * 864e5)) / 2);
     const maxFlight = q.flight >= 25 ? 99 : q.flight + 0.5;
-    const all = cities.map((c) => evaluate(c, { weights, mid, taste: q.taste, maxFlight, alerts, seoulHi }));
+    const all = cities.map((c) => evaluate(c, { weights, mid, taste: q.taste, maxFlight, alerts, seoulHi, start: qs, end: qe }));
     return {
       results: all.filter(isResult).sort((a, b) => b.score - a.score),
       excluded: all.filter(isExcluded),
@@ -99,7 +99,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         const { weights } = monthWeights(w.start, w.end);
         const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
         const f = autoFlight(w.len);
-        const best = cities.map((c) => evaluate(c, { weights, mid, taste: leaveQ.taste, maxFlight: f >= 25 ? 99 : f + 0.5, alerts, seoulHi }))
+        const best = cities.map((c) => evaluate(c, { weights, mid, taste: leaveQ.taste, maxFlight: f >= 25 ? 99 : f + 0.5, alerts, seoulHi, start: w.start, end: w.end }))
           .filter(isResult).sort((x, y) => y.score - x.score)[0] ?? null;
         return { w, best };
       }),

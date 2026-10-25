@@ -5,7 +5,8 @@ export interface City {
   code: string; emoji: string;
   hi: number[]; lo: number[]; rain: number[]; hum: number[] | null;
   hazards: { months: number[]; label: string }[];
-  festivals: { months: number[]; title: string; when: string }[];
+  /** ranges: [["MM-DD","MM-DD"], …] 날짜를 아는 행사. 없으면 months(음력 등 해마다 바뀌는 행사)로만 판단 */
+  festivals: { months: number[]; title: string; when: string; ranges?: string[][] }[];
 }
 
 export interface CityAlert { level: number; note: string; label?: string }

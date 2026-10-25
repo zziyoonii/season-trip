@@ -26,7 +26,18 @@ export function daylight(lat: number, d: Date) {
   return (2 * Math.acos(c) * 180) / Math.PI / 15;
 }
 
-export interface EvalContext { weights: number[]; mid: Date; taste: Taste; maxFlight: number; alerts: AlertMap; seoulHi: number[] }
+export interface EvalContext { weights: number[]; mid: Date; taste: Taste; maxFlight: number; alerts: AlertMap; seoulHi: number[]; start: Date; end: Date }
+
+const mmdd = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** 여행 기간 중 하루라도 행사 기간에 들어가면 true. 날짜를 모르는 행사는 달만 겹치면 true */
+export function festivalInTrip(f: City["festivals"][number], start: Date, end: Date, weights: number[]) {
+  if (!f.ranges?.length) return f.months.some((m) => weights[m - 1] > 0);
+  for (let d = new Date(start), n = 0; d <= end && n < 62; d.setDate(d.getDate() + 1), n++) {
+    const k = mmdd(d);
+    if (f.ranges.some(([a, b]) => (a <= b ? k >= a && k <= b : k >= a || k <= b))) return true;
+  }
+  return false;
+}
 
 export function evaluate(c: City, ctx: EvalContext): Result | Excluded | null {
   const { weights: w, mid, taste, alerts } = ctx;
@@ -65,7 +76,7 @@ export function evaluate(c: City, ctx: EvalContext): Result | Excluded | null {
   let alertPen = 0;
   if (al && al.level === 2) { alertPen = 10; notes.unshift(`⚠️ 외교부 여행경보 2단계(여행자제) · ${al.note}`); }
 
-  const festivals = c.festivals.filter((f) => f.months.some((m) => w[m - 1] > 0));
+  const festivals = c.festivals.filter((f) => festivalInTrip(f, ctx.start, ctx.end, w));
   const [a, b] = T.ideal, [oa, ob] = T.ok;
   const center = (a + b) / 2, half = (b - a) / 2;
   const tScore = hi < a ? 0.85 * (1 - (a - hi) / (a - oa)) : hi > b ? 0.85 * (1 - (hi - b) / (ob - b)) : 1 - (0.15 * Math.abs(hi - center)) / half;
