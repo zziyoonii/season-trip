@@ -26,7 +26,7 @@ function prompt(city: string, country: string, start: string, end: string) {
 - 올해 실제 날짜가 검색으로 확인된 것만. 날짜를 못 찾았으면 넣지 마.
 - 한국인 여행자에게 의미 있는 순서로.
 - title, desc는 반드시 한국어. 예: "さっぽろホワイトイルミネーション" → "삿포로 화이트 일루미네이션"
-- start, end는 YYYY-MM-DD. 하루짜리면 둘이 같게.
+- start, end는 YYYY-MM-DD로, 행사의 실제 전체 기간을 그대로 써. 위 조회 기간 밖으로 나가도 자르지 마. 하루짜리면 둘이 같게.
 - 답은 아래 JSON만, 다른 말 없이:
 {"items":[{"title":"행사 이름","start":"YYYY-MM-DD","end":"YYYY-MM-DD","desc":"한 줄 설명(30자 이내)"}]}
 없으면 {"items":[]}`;
@@ -71,6 +71,8 @@ function walk(node: any, out: { text: string[]; queries: string[]; cites: { titl
     if (Array.isArray(q)) out.queries.push(...q.map(String));
   }
   if (t === "url_citation" && node.url) out.cites.push({ title: String(node.title ?? "출처"), url: String(node.url) });
+  // 검색 결과 단계(google_search_result)에 들어 있는 링크도 출처로 써요
+  else if (typeof node.url === "string" && /^https?:/.test(node.url) && typeof node.title === "string") out.cites.push({ title: node.title, url: node.url });
   const s = node.search_suggestions ?? node.searchSuggestions;
   if (typeof s === "string" && s.trim()) out.sugg.push(s);
   if (t === "text" && typeof node.text === "string") out.text.push(node.text);
