@@ -174,7 +174,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
               </div>
               <div className="block">
                 <p className="lab">언제까지 써야 해요?</p>
-                <label className="dbox"><span>소진 기한</span><input type="date" value={deadline} min={today} aria-label="연차 소진 기한" onChange={(ev) => setDeadline(ev.target.value)} /></label>
+                <DateBox label="소진 기한" value={deadline} min={today} onChange={setDeadline} />
                 <div className="days"><span className="hint">기한 안의 평일에만 연차를 쓰고, 기한 뒤 주말·공휴일까지 이어서 쉬게 짜드려요</span></div>
               </div>
             </>
@@ -184,8 +184,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           <div className="block">
             <p className="lab">여행 기간</p>
             <div className="dates">
-              <label className="dbox"><span>가는 날</span><input type="date" value={start} min={today} aria-label="가는 날" onChange={(ev) => onStart(ev.target.value)} /></label>
-              <label className={`dbox${dateErr ? " err" : ""}`}><span>오는 날</span><input type="date" value={end} min={start || today} aria-label="오는 날" onChange={(ev) => ev.target.value && applyDates(start, ev.target.value)} /></label>
+              <DateBox label="가는 날" value={start} min={today} onChange={onStart} />
+              <DateBox label="오는 날" value={end} min={start || today} err={dateErr} onChange={(v) => applyDates(start, v)} />
             </div>
             <div className={`days${dateErr ? " err" : ""}`}>{dateErr ? "오는 날이 가는 날보다 빨라요. 날짜를 다시 골라주세요." : hasDates ? `${days - 1}박 ${days}일${days >= 62 ? " · 최대 62일까지 계산해요" : ""}` : <span className="hint">가는 날과 오는 날을 골라주세요</span>}</div>
             <button type="button" className="hollink" onClick={() => setHolOpen(true)}>
@@ -292,6 +292,22 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </div>
+  );
+}
+
+/* ───────── 날짜 칸 ───────── */
+
+/** 화면엔 "12월 25일 (금)"처럼 보이고, 누르면 휴대폰·브라우저 기본 달력이 열려요 */
+function DateBox({ label, value, min, err, onChange }: { label: string; value: string; min?: string; err?: boolean; onChange: (v: string) => void }) {
+  const d = value ? parseDate(value) : null;
+  return (
+    <label className={`dbox${err ? " err" : ""}${d ? "" : " blank"}`}>
+      <span>{label}</span>
+      <b className="dval">{d ? `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})` : "날짜 선택"}</b>
+      <input type="date" value={value} min={min} aria-label={label}
+        onChange={(ev) => ev.target.value && onChange(ev.target.value)}
+        onClick={(ev) => { try { (ev.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* 지원 안 하면 기본 동작 */ } }} />
+    </label>
   );
 }
 

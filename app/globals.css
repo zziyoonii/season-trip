@@ -300,3 +300,11 @@ html,body{height:100%;overflow:hidden}
   .splane svg{width:17px;height:17px}
 }
 @media (prefers-reduced-motion:reduce){.splane .sbadge,.splane .sdone,.splane svg{transition:none}}
+
+/* 날짜 칸: 보이는 건 "12월 25일 (금)", 실제 입력은 위에 투명하게 */
+.dbox{position:relative}
+.dbox .dval{font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbox.blank .dval{color:var(--muted);font-weight:600}
+.dbox input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;border:0}
+.dbox input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+.dbox:focus-within{box-shadow:inset 0 0 0 2px var(--accent)}
