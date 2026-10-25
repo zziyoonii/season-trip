@@ -230,3 +230,11 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 .trip .chev{color:var(--muted);font-size:18px}
 .logo>span{display:flex;align-items:baseline;gap:6px}
 .logo small{font-size:12px;font-weight:600;color:var(--muted)}
+.leavein{display:flex;align-items:baseline;gap:2px;cursor:text}
+.leavein input{font:inherit;width:3ch;text-align:right;border:0;background:transparent;color:var(--ink);font-size:24px;font-weight:900;padding:0;-moz-appearance:textfield;appearance:textfield}
+.leavein input::-webkit-outer-spin-button,.leavein input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.leavein input:focus{outline:none;border-bottom:2px solid var(--accent)}
+.leavein input::placeholder{color:var(--muted)}
+.leavein span{font-size:20px;font-weight:800}
+.holyear{display:flex;flex-direction:column;gap:8px}
+.holyear h4{margin:4px 2px 0;font-size:13px;font-weight:800;color:var(--sub)}

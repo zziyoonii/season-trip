@@ -158,8 +158,13 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
                 <p className="lab">남은 연차</p>
                 <div className="leaven">
                   <button type="button" aria-label="하루 줄이기" disabled={leaveN <= 0} onClick={() => setLeaveN(leaveN - 1)}>−</button>
-                  <b aria-live="polite">{leaveN ? `${leaveN}일` : "몇 일?"}</b>
-                  <button type="button" aria-label="하루 늘리기" disabled={leaveN >= 25} onClick={() => setLeaveN(leaveN + 1)}>+</button>
+                  <label className="leavein">
+                    <input type="number" inputMode="numeric" min={0} max={30} placeholder="0" aria-label="남은 연차 일수"
+                      value={leaveN || ""} onChange={(ev) => { const v = parseInt(ev.target.value, 10); setLeaveN(Number.isNaN(v) ? 0 : Math.max(0, Math.min(30, v))); }}
+                      onFocus={(ev) => ev.target.select()} />
+                    <span>일</span>
+                  </label>
+                  <button type="button" aria-label="하루 늘리기" disabled={leaveN >= 30} onClick={() => setLeaveN(leaveN + 1)}>+</button>
                 </div>
               </div>
               <div className="block">
@@ -480,17 +485,23 @@ function HolidaySheet({ today, start, end, onPick, onClose }: { today: Date; sta
           )}
         </div>
         <p className="holhint">연차를 붙이면 주말·공휴일과 이어지는 가장 긴 연휴를 찾아줘요.</p>
-        <div className="hollist">
-          {list.map((o) => {
-            const a = iso(o.start), b = iso(o.end);
-            return (
-              <button key={a + b} type="button" className={`hrow${o.used ? " gold" : ""}`} aria-pressed={a === start && b === end} onClick={() => onPick(a, b)}>
-                <span><b>{o.names.join("·")}</b><small>{dl(o.start)} – {dl(o.end)}</small></span>
-                <span className="hd"><b>{o.len}일</b>{o.used ? <i>연차 {o.used}일</i> : null}</span>
-              </button>
-            );
-          })}
-        </div>
+        {[...new Set(list.map((o) => o.start.getFullYear()))].map((y) => (
+          <section key={y} className="holyear" aria-label={`${y}년 연휴`}>
+            <h4>{y}년{y === today.getFullYear() ? " · 올해" : y === today.getFullYear() + 1 ? " · 내년" : ""}</h4>
+            <div className="hollist">
+              {list.filter((o) => o.start.getFullYear() === y).map((o) => {
+                const a = iso(o.start), b = iso(o.end);
+                const cross = o.end.getFullYear() !== o.start.getFullYear();
+                return (
+                  <button key={a + b} type="button" className={`hrow${o.used ? " gold" : ""}`} aria-pressed={a === start && b === end} onClick={() => onPick(a, b)}>
+                    <span><b>{o.names.join("·")}</b><small>{dl(o.start)} – {cross ? `${o.end.getFullYear()}.` : ""}{dl(o.end)}</small></span>
+                    <span className="hd"><b>{o.len}일</b>{o.used ? <i>연차 {o.used}일</i> : null}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
         <button type="button" className="holclose" onClick={onClose}>닫기</button>
       </div>
     </div>
