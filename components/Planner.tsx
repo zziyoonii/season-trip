@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
 import { holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
+import { planLeave, type LeavePlan, type LeaveWindow } from "@/lib/leave";
+import { track } from "@/lib/ga";
 import type { AlertMap, City, Result, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
@@ -29,6 +31,11 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const [holOpen, setHolOpen] = useState(false);
   const [shareFor, setShareFor] = useState<Result | null>(null);
   const lastLen = useRef(7);
+  // 연차 소진 모드
+  const [mode, setMode] = useState<"dates" | "leave">("dates");
+  const [leaveN, setLeaveN] = useState(0);
+  const [deadline, setDeadline] = useState(`${today.slice(0, 4)}-12-31`);
+  const [leaveQ, setLeaveQ] = useState<{ n: number; deadline: string; taste: Taste } | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const hasDates = !!start && !!end;
@@ -43,7 +50,42 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     return setTimeout(() => { setQuery(q); setShowAll(false); setLoading(false); }, reduce ? 250 : 1500);
   }
-  function search() { if (ready && taste) run({ start, end, taste, flight }, true); }
+  function search() {
+    if (!ready || !taste) return;
+    track("search", { taste, days, flight, start, holiday: holidayLabel || undefined });
+    run({ start, end, taste, flight }, true);
+  }
+  const leaveReady = leaveN >= 1 && !!taste && !!deadline && parseDate(deadline) > todayD;
+  function planSearch() {
+    if (!leaveReady || !taste) return;
+    track("leave_plan", { leave_days: leaveN, deadline, taste });
+    setLoading(true);
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    setTimeout(() => { setLeaveQ({ n: leaveN, deadline, taste }); setLoading(false); }, 1500);
+  }
+  // 계획 중 하나를 고르면 그 날짜로 일반 검색 결과(탑승권)를 보여줘요
+  function pickWindow(w: LeaveWindow) {
+    if (!taste) return;
+    const a = iso(w.start), b = iso(w.end);
+    track("leave_pick", { start: a, days: w.len, leave_used: w.used, taste });
+    setMode("dates"); applyDates(a, b);
+    const f = autoFlight(w.len);
+    run({ start: a, end: b, taste, flight: f }, true);
+  }
+  const plans = useMemo(() => {
+    if (!leaveQ) return null;
+    return planLeave(todayD, parseDate(leaveQ.deadline), leaveQ.n).map((p) => ({
+      ...p,
+      picks: p.windows.map((w) => {
+        const { weights } = monthWeights(w.start, w.end);
+        const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
+        const f = autoFlight(w.len);
+        const best = cities.map((c) => evaluate(c, { weights, mid, taste: leaveQ.taste, maxFlight: f >= 25 ? 99 : f + 0.5, alerts, seoulHi }))
+          .filter(isResult).sort((x, y) => y.score - x.score)[0] ?? null;
+        return { w, best };
+      }),
+    }));
+  }, [leaveQ, cities, alerts, seoulHi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 한 번 찾은 뒤에는 조건을 바꾸면 바로 다시 찾아요
   useEffect(() => {
@@ -105,6 +147,29 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         </header>
 
         <section className="card" aria-label="여행 조건">
+          <div className="tabs" role="tablist" aria-label="찾는 방법">
+            <button type="button" role="tab" aria-selected={mode === "dates"} onClick={() => setMode("dates")}>날짜로 찾기</button>
+            <button type="button" role="tab" aria-selected={mode === "leave"} onClick={() => { setMode("leave"); track("tab_leave"); }}>🔥 연차 소진</button>
+          </div>
+          {mode === "leave" ? (
+            <>
+              <h1>남은 연차,<br />어디서 쓸까요?</h1>
+              <div className="block">
+                <p className="lab">남은 연차</p>
+                <div className="leaven">
+                  <button type="button" aria-label="하루 줄이기" disabled={leaveN <= 0} onClick={() => setLeaveN(leaveN - 1)}>−</button>
+                  <b aria-live="polite">{leaveN ? `${leaveN}일` : "몇 일?"}</b>
+                  <button type="button" aria-label="하루 늘리기" disabled={leaveN >= 25} onClick={() => setLeaveN(leaveN + 1)}>+</button>
+                </div>
+              </div>
+              <div className="block">
+                <p className="lab">언제까지 써야 해요?</p>
+                <label className="dbox"><span>소진 기한</span><input type="date" value={deadline} min={today} aria-label="연차 소진 기한" onChange={(ev) => setDeadline(ev.target.value)} /></label>
+                <div className="days"><span className="hint">기한 안의 평일에만 연차를 쓰고, 기한 뒤 주말·공휴일까지 이어서 쉬게 짜드려요</span></div>
+              </div>
+            </>
+          ) : (
+          <>
           <h1>언제, 어떤 날씨로<br />떠나고 싶어요?</h1>
           <div className="block">
             <p className="lab">여행 기간</p>
@@ -117,6 +182,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
               <span aria-hidden="true">🗓</span> 연휴로 채우기 {holidayLabel && <small>· {holidayLabel}</small>}<span className="chev" aria-hidden="true">›</span>
             </button>
           </div>
+          </>
+          )}
 
           <div className="block">
             <p className="lab">원하는 날씨</p>
@@ -129,15 +196,25 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
             </div>
           </div>
 
-          <div className="block">
+          {mode === "dates" && <div className="block">
             <div className="fl-head"><label className="lab" htmlFor="flight">비행시간</label><b>{flight >= 25 ? "제한 없음" : `${flight}시간 이내`}</b></div>
             <input id="flight" type="range" min={5} max={25} step={5} value={flight}
               onChange={(ev) => { setFlight(+ev.target.value); setFlightNote("직접 정한 비행시간이에요."); }} />
             <div className="ticks" aria-hidden="true"><span>5시간</span><span>10</span><span>15</span><span>20</span><span>제한 없음</span></div>
             <div className="auto">{flightNote}</div>
-          </div>
+          </div>}
 
-          {!query && (
+          {mode === "leave" && !leaveQ && (
+            <div className="block">
+              <button type="button" className="go" disabled={!leaveReady || loading} onClick={planSearch}>🔥 연차 계획 짜기</button>
+              <p className="gohint" aria-live="polite">{leaveN < 1 ? "남은 연차를 알려주세요" : !taste ? "원하는 날씨를 골라주세요" : "준비 완료! 눌러서 계획을 받아보세요"}</p>
+            </div>
+          )}
+          {mode === "leave" && leaveQ && (leaveQ.n !== leaveN || leaveQ.deadline !== deadline || leaveQ.taste !== taste) && (
+            <div className="block"><button type="button" className="go" disabled={!leaveReady || loading} onClick={planSearch}>바뀐 조건으로 다시 짜기</button></div>
+          )}
+
+          {mode === "dates" && !query && (
             <div className="block">
               <button type="button" className="go" disabled={!ready || loading} onClick={search}>✈️ 제철 여행지 찾기</button>
               <p className="gohint" aria-live="polite">{missing || "준비 완료! 눌러서 찾아보세요"}</p>
@@ -146,7 +223,23 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         </section>
 
         <div ref={resultsRef} className="anchor" />
-        {!query && !loading ? (
+        {mode === "leave" ? (
+          loading ? <Loader tasteName={TASTES[(taste ?? "warm")].name} /> :
+          !plans ? (
+            <div className="intro">
+              <span className="em" aria-hidden="true">🔥</span>
+              <b>올해 연차, 그냥 날리지 마세요</b>
+              <p>남은 연차와 원하는 날씨만 알려주시면<br />주말·공휴일을 붙여 가장 길게 쉬는 계획과 그때 제철인 곳을 찾아드려요.</p>
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="empty">기한 안에 쓸 수 있는 평일이 부족해요.<br />소진 기한을 늘려보세요.</div>
+          ) : (
+            <>
+              <div className="sumline"><h2>연차 계획</h2><span>연차 {leaveQ?.n}일 · {leaveQ && dl(parseDate(leaveQ.deadline))}까지</span></div>
+              <div className="plans">{plans.map((p) => <PlanCard key={p.kind} plan={p} onPick={pickWindow} />)}</div>
+            </>
+          )
+        ) : !query && !loading ? (
           <div className="intro">
             <span className="em" aria-hidden="true">🧳</span>
             <b>날짜와 날씨만 골라주세요</b>
@@ -163,7 +256,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           <div className="empty">이 기간엔 원하는 날씨인 곳이 없어요.<br />날씨를 바꾸거나 비행시간을 늘려보세요.</div>
         ) : (
           <>
-            <BoardingPass r={results[0]} taste={query.taste} rangeText={out.rangeText} alertDate={alertDate} q={query} onShare={() => setShareFor(results[0])} />
+            <BoardingPass r={results[0]} taste={query.taste} rangeText={out.rangeText} alertDate={alertDate} q={query} onShare={() => { track("share_open", { city: results[0].city.name, taste: query.taste }); setShareFor(results[0]); }} />
             <div className="list">
               {rest.map((r, i) => <ResultItem key={r.city.name} r={r} rank={i + 2} taste={query.taste} alertDate={alertDate} q={query} />)}
             </div>
@@ -186,9 +279,29 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
         </p>
       </div>
 
-      {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
+      {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </>
+  );
+}
+
+/* ───────── 연차 계획 ───────── */
+
+function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindow; best: Result | null }[] }; onPick: (w: LeaveWindow) => void }) {
+  const tag = plan.kind === "all" ? "🧳" : plan.kind === "split" ? "✌️" : "⚡";
+  return (
+    <article className="plan">
+      <header><span className="ptag" aria-hidden="true">{tag}</span><div><b>{plan.title}</b><span>{plan.desc}</span></div></header>
+      {plan.picks.map(({ w, best }) => (
+        <button key={iso(w.start)} type="button" className="trip" onClick={() => onPick(w)}>
+          <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{w.len}일 쉬고 연차 {w.used}일</small></span>
+          {best ? (
+            <span className="dest"><i aria-hidden="true">{best.city.emoji}</i><span><b>{best.city.name}</b><small>{best.hi.toFixed(0)}° · {best.city.flight}시간</small></span></span>
+          ) : <span className="dest none">맞는 곳이 없어요</span>}
+          <span className="chev" aria-hidden="true">›</span>
+        </button>
+      ))}
+    </article>
   );
 }
 
@@ -232,7 +345,7 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
   const [open, setOpen] = useState(false);
   const alert = r.notes.some((n) => n.startsWith("⚠️"));
   return (
-    <details className="item" onToggle={(ev) => setOpen((ev.target as HTMLDetailsElement).open)}>
+    <details className="item" onToggle={(ev) => { const o = (ev.target as HTMLDetailsElement).open; setOpen(o); if (o) track("result_open", { city: r.city.name, rank }); }}>
       <summary>
         <span className="tbadge" style={{ ["--t" as string]: tempColor(r.hi) }}>{r.hi.toFixed(0)}°</span>
         <span className="nm"><b>{rank}. {r.city.name} {r.city.emoji}</b>
@@ -410,6 +523,7 @@ function ShareSheet({ r, start, days, rangeText, rainWord, onClose }: { r: Resul
   async function share() {
     const blob = (await render(name.trim())) ?? blobRef.current;
     if (!blob) return;
+    track("share", { method: "web_share", city: r.city.name, with_name: !!name.trim() });
     try {
       await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], text: `나 ${start.getMonth() + 1}월에 ${r.city.name} 가요 ✈️` });
     } catch (e) {
@@ -419,6 +533,7 @@ function ShareSheet({ r, start, days, rangeText, rainWord, onClose }: { r: Resul
   async function save() {
     const blob = (await render(name.trim())) ?? blobRef.current;
     if (!blob) return;
+    track("share", { method: "download", city: r.city.name, with_name: !!name.trim() });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = filename; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
