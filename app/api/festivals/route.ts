@@ -9,7 +9,7 @@ const lastDay = (y: number, m: number) => new Date(y, m, 0).getDate();
 // 도시 × (시작 월 ~ 끝 월) 단위로 일주일 캐시 → 같은 "11월 홍콩"은 한 번만 검색
 const cached = unstable_cache(
   async (city: string, country: string, from: string, to: string) => findFestivals(city, country, from, to),
-  ["festivals-v1"],
+  ["festivals-v2"], // v1에는 키 넣기 전 '결과 없음'이 캐시돼 있을 수 있어서 버전 올림
   { revalidate: 60 * 60 * 24 * 7 },
 );
 
@@ -24,12 +24,18 @@ export async function GET(req: Request) {
   }
   const [sy, sm] = start.split("-").map(Number), [ey, em] = end.split("-").map(Number);
   const from = `${sy}-${pad(sm)}-01`, to = `${ey}-${pad(em)}-${pad(lastDay(ey, em))}`;
+  // 키가 없으면 캐시에 넣지 않고 바로 알려줘요 (나중에 키를 넣었을 때 빈 결과가 남아 있지 않게)
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn("[festivals] GEMINI_API_KEY 가 없어서 대표 행사만 보여줘요");
+    return NextResponse.json({ live: false, reason: "no_key" });
+  }
   try {
     const ans = await cached(city.name, city.country, from, to);
-    if (!ans) return NextResponse.json({ live: false });
-    return NextResponse.json({ live: true, from, to, ...ans });
+    if (!ans) return NextResponse.json({ live: false, reason: "no_key" });
+    if (!ans.items.length) console.info(`[festivals] ${city.name} ${from}~${to}: 검색은 됐지만 날짜가 확인된 행사 없음 (${ans.model})`);
+    return NextResponse.json({ live: true, reason: ans.items.length ? "ok" : "empty", from, to, ...ans });
   } catch (e) {
-    console.error("[festivals]", e);
-    return NextResponse.json({ live: false, error: "행사 검색에 실패했어요" });
+    console.error("[festivals] Gemini 호출 실패:", e);
+    return NextResponse.json({ live: false, reason: "error", error: String(e).slice(0, 300) });
   }
 }
