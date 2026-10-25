@@ -287,7 +287,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
         <p className="foot">
           기후 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · 여행경보 외교부({alertDate}) · 출발 전 <a href="https://www.0404.go.kr/" target="_blank" rel="noopener">해외안전여행</a> 확인
         </p>
-        <p className="maker">만든 사람 · <a href="https://www.instagram.com/zziyoonii/" target="_blank" rel="noopener" onClick={() => track("maker_click")}>지윤(Qoo) ↗</a></p>
+        <p className="maker">만든 사람 · <a href="https://www.instagram.com/zziyoonii/" target="_blank" rel="noopener" onClick={() => track("maker_click")}>지윤(Qoo) ↗</a> · <a href="/privacy">개인정보처리방침</a></p>
       </div>
 
       <ScrollPlane />
