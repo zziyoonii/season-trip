@@ -8,7 +8,6 @@ import { track } from "@/lib/ga";
 import type { AlertMap, City, Result, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
-const LOAD_MSGS = ["설레는 중…", "날씨 펼쳐보는 중…", "여권 찾는 중…", "창가 자리 고르는 중…", "캐리어 꺼내는 중…"];
 const WD = "일월화수목금토";
 const md = (d: Date) => `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 const dl = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}(${WD[d.getDay()]})`;
@@ -37,6 +36,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const [deadline, setDeadline] = useState(`${today.slice(0, 4)}-12-31`);
   const [leaveQ, setLeaveQ] = useState<{ n: number; deadline: string; taste: Taste } | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const codes = useMemo(() => cities.map((c) => c.code), [cities]);
 
   const hasDates = !!start && !!end;
   const s = start ? parseDate(start) : null, e = end ? parseDate(end) : null;
@@ -44,7 +44,25 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   const days = s && e ? Math.round((e.getTime() - s.getTime()) / 864e5) + 1 : 0;
   const ready = hasDates && !dateErr && !!taste;
 
+  const [pending, setPending] = useState<Query | null>(null);
+  function compute(q: Query) {
+    const qs = parseDate(q.start), qe = parseDate(q.end);
+    const { weights, days } = monthWeights(qs, qe);
+    const mid = new Date((qs.getTime() + Math.min(qe.getTime(), qs.getTime() + 61 * 864e5)) / 2);
+    const maxFlight = q.flight >= 25 ? 99 : q.flight + 0.5;
+    const all = cities.map((c) => evaluate(c, { weights, mid, taste: q.taste, maxFlight, alerts, seoulHi }));
+    return {
+      results: all.filter(isResult).sort((a, b) => b.score - a.score),
+      excluded: all.filter(isExcluded),
+      hidden: all.filter((r) => r === null).length,
+      qDays: days, qStart: qs, rangeText: `${md(qs)}–${md(qe)}`,
+    };
+  }
+  // 출발 안내판이 마지막에 멈출 곳 = 실제 1순위
+  const target = useMemo(() => (pending ? compute(pending).results[0]?.city ?? null : null), [pending]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function run(q: Query, scroll: boolean) {
+    setPending(q);
     setLoading(true);
     if (scroll) setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -113,20 +131,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     applyDates(v, b);
   }
 
-  const out = useMemo(() => {
-    if (!query) return null;
-    const qs = parseDate(query.start), qe = parseDate(query.end);
-    const { weights, days } = monthWeights(qs, qe);
-    const mid = new Date((qs.getTime() + Math.min(qe.getTime(), qs.getTime() + 61 * 864e5)) / 2);
-    const maxFlight = query.flight >= 25 ? 99 : query.flight + 0.5;
-    const all = cities.map((c) => evaluate(c, { weights, mid, taste: query.taste, maxFlight, alerts, seoulHi }));
-    return {
-      results: all.filter(isResult).sort((a, b) => b.score - a.score),
-      excluded: all.filter(isExcluded),
-      hidden: all.filter((r) => r === null).length,
-      qDays: days, qStart: qs, rangeText: `${md(qs)}–${md(qe)}`,
-    };
-  }, [query, cities, alerts, seoulHi]);
+  const out = useMemo(() => (query ? compute(query) : null), [query, cities, alerts, seoulHi]); // eslint-disable-line react-hooks/exhaustive-deps
   const results = out?.results ?? [];
 
   const holidayLabel = useMemo(() => {
@@ -203,7 +208,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
 
           {mode === "dates" && <div className="block">
             <div className="fl-head"><label className="lab" htmlFor="flight">비행시간</label><b>{flight >= 25 ? "제한 없음" : `${flight}시간 이내`}</b></div>
-            <input id="flight" type="range" min={5} max={25} step={5} value={flight}
+            <input id="flight" className="flightbar" type="range" min={5} max={25} step={5} value={flight}
+              style={{ ["--p" as string]: `${((flight - 5) / 20) * 100}%` }}
               onChange={(ev) => { setFlight(+ev.target.value); setFlightNote("직접 정한 비행시간이에요."); }} />
             <div className="ticks" aria-hidden="true"><span>5시간</span><span>10</span><span>15</span><span>20</span><span>제한 없음</span></div>
             <div className="auto">{flightNote}</div>
@@ -229,7 +235,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
 
         <div ref={resultsRef} className="anchor" />
         {mode === "leave" ? (
-          loading ? <Loader tasteName={TASTES[(taste ?? "warm")].name} /> :
+          loading ? <Loader codes={codes} target={null} label="연차 계획 짜는 중" /> :
           !plans ? (
             <div className="intro">
               <span className="em" aria-hidden="true">🔥</span>
@@ -257,7 +263,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           <span>{loading || !out ? "찾는 중…" : `${results.length}곳 찾았어요${out.hidden ? ` · 먼 곳 ${out.hidden}곳 숨김` : ""}`}</span>
         </div>
 
-        {loading || !out || !query ? <Loader tasteName={TASTES[(taste ?? "warm")].name} /> : results.length === 0 ? (
+        {loading || !out || !query ? <Loader codes={codes} target={target} label={`${TASTES[(taste ?? "warm")].name} 찾는 중`} /> : results.length === 0 ? (
           <div className="empty">이 기간엔 원하는 날씨인 곳이 없어요.<br />날씨를 바꾸거나 비행시간을 늘려보세요.</div>
         ) : (
           <>
@@ -436,20 +442,41 @@ function Ribbon({ r }: { r: Result }) {
   );
 }
 
-function Loader({ tasteName }: { tasteName: string }) {
+/** 받침에 맞춰 '로/으로' (ㄹ 받침은 '로') */
+function withRo(word: string) {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  const jong = c >= 0 && c <= 11171 ? c % 28 : 0;
+  return word + (jong === 0 || jong === 8 ? "로" : "으로");
+}
+
+/** 공항 출발 안내판: 공항 코드가 촤르륵 넘어가다가 실제 1순위에서 멈춰요 */
+const LOAD_MSGS = ["설레는 중…", "출발편 뒤적이는 중…", "여권 찾는 중…", "창가 자리 고르는 중…", "캐리어 꺼내는 중…"];
+function Loader({ codes, target, label }: { codes: string[]; target: City | null; label: string }) {
+  const [code, setCode] = useState("ICN");
+  const [tick, setTick] = useState(0);
+  const [landed, setLanded] = useState(false);
   const [k, setK] = useState(0);
-  useEffect(() => { const t = setInterval(() => setK((v) => (v + 1) % LOAD_MSGS.length), 520); return () => clearInterval(t); }, []);
-  const A = "M14 26 C 46 18, 84 18, 102 26 C 114 32, 104 42, 86 40 C 70 38, 62 44, 56 56 C 46 76, 32 92, 14 104";
+  useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { if (target) { setCode(target.code); setLanded(true); } return; }
+    const flip = setInterval(() => { setCode(codes[Math.floor(Math.random() * codes.length)]); setTick((t) => t + 1); }, 90);
+    const msg = setInterval(() => setK((v) => (v + 1) % LOAD_MSGS.length), 520);
+    const land = target ? setTimeout(() => { clearInterval(flip); setCode(target.code); setTick((t) => t + 1); setLanded(true); }, 1050) : null;
+    return () => { clearInterval(flip); clearInterval(msg); if (land) clearTimeout(land); };
+  }, [codes, target]);
   return (
-    <div className="loader" role="status" aria-live="polite">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <path id="lpath" className="trail" d={A} />
-        <path className="trail" d="M56 56 C 62 70, 74 82, 90 92" />
-        <g><g transform="rotate(45) scale(1.25) translate(-12 -12)"><path d={PLANE_D} fill="var(--accent)" /></g>
-          <animateMotion dur="1.5s" repeatCount="indefinite" rotate="auto"><mpath href="#lpath" /></animateMotion></g>
-      </svg>
-      <p className="lmsg">{LOAD_MSGS[k]}</p>
-      <span className="lsub">{tasteName}을 찾고 있어요</span>
+    <div className="loader board" role="status" aria-live="polite">
+      <div className="bhead"><span>DEPARTURES</span><span>출발</span></div>
+      <div className="brow">
+        <span className="from">ICN</span>
+        <svg className="bplane" viewBox="0 0 24 24" aria-hidden="true"><path d={PLANE_D} fill="var(--orange)" /></svg>
+        <span className="flaps" aria-hidden="true">
+          {code.split("").map((ch, i) => <span key={`${i}-${tick}`} className="flap">{ch}</span>)}
+        </span>
+        <span className={`bstat${landed ? " on" : ""}`}>{landed ? "탑승 확정" : "탐색 중"}</span>
+      </div>
+      <p className="lmsg">{landed && target ? <>{target.emoji} {withRo(target.name)} 나가요!</> : LOAD_MSGS[k]}</p>
+      <span className="lsub">{label}</span>
     </div>
   );
 }
@@ -577,8 +604,8 @@ function Logo() {
       <defs><mask id="lgT"><rect width="170" height="96" rx="14" fill="#fff" /><circle cx="0" cy="48" r="12" fill="#000" /><circle cx="170" cy="48" r="12" fill="#000" /></mask></defs>
       <rect width="170" height="96" rx="14" fill="#1D3F9E" mask="url(#lgT)" />
       <line x1="118" y1="14" x2="118" y2="82" stroke="#fff" strokeOpacity=".5" strokeWidth="4" strokeDasharray="7 7" />
-      <text x="16" y="60" fontFamily="Noto Sans KR, sans-serif" fontWeight="900" fontSize="31" letterSpacing="-2" fill="#fff">나가요</text>
-      <g transform="translate(144 48) rotate(45) scale(1.4) translate(-12 -12)"><path d={PLANE_D} fill="#F28C28" /></g>
+      <g transform="translate(64 48) rotate(45) scale(2.6) translate(-12 -12)"><path d={PLANE_D} fill="#F28C28" /></g>
+      <circle cx="142" cy="34" r="5" fill="#fff" opacity=".9" /><circle cx="142" cy="62" r="5" fill="#fff" opacity=".9" />
     </svg>
   );
 }

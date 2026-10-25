@@ -97,8 +97,9 @@ export async function drawShareImage({ r, start, days, rangeText, rainWord, pass
   x.fillStyle = NAVY; rr(x, 0, 0, 120, 68, 10); x.fill();
   x.fillStyle = BG; [0, 120].forEach((cx) => { x.beginPath(); x.arc(cx, 34, 8.5, 0, Math.PI * 2); x.fill(); });
   x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(83, 10); x.lineTo(83, 58); x.stroke(); x.setLineDash([]);
-  x.fillStyle = "#fff"; x.font = `900 20px ${FONT}`; x.textAlign = "left"; x.fillText("나가요", 11, 41);
-  plane(x, 102, 34, 20, 45, ORANGE); x.restore();
+  plane(x, 45, 34, 36, 45, ORANGE);
+  x.fillStyle = "rgba(255,255,255,.9)"; [24, 44].forEach((cy) => { x.beginPath(); x.arc(100, cy, 3.5, 0, Math.PI * 2); x.fill(); });
+  x.restore();
   x.fillStyle = INK; x.font = `900 44px ${FONT}`; x.fillText("나가요", fx + 144, fy + 30);
   x.fillStyle = MUTED; x.font = `500 26px ${FONT}`; x.fillText("날씨 보고 고르는 제철 여행지 · nagayo.vercel.app", fx + 144, fy + 72);
 
