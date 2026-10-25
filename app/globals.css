@@ -193,7 +193,6 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 .foot a{color:inherit}
 .maker{font-size:12px;color:var(--muted);margin:14px 4px 0}
 .maker a{color:inherit;font-weight:700;text-decoration:none;border-bottom:1px solid currentColor}
-.gcap{font-size:12px;color:var(--muted);margin:2px 2px 6px}
 .src{font-size:12px;color:var(--muted);line-height:1.6}
 .src a{color:var(--sub)}
 .warn small{font-weight:400;opacity:.8}

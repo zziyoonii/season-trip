@@ -472,14 +472,10 @@ function Festivals({ r, q }: { r: Result; q: Query }) {
 /** Google 검색 추천 칩: 구글이 준 HTML을 그대로, 페이지와 분리된 iframe 안에서 보여줘요 */
 function SearchSuggestions({ html }: { html: string }) {
   const [h, setH] = useState(64);
-  // 구글 검색 연동 이용 조건상 이 칩은 그대로 보여줘야 해요. 뭔지 알 수 있게 한 줄 설명만 붙여요
   return (
-    <div className="gwrap">
-    <p className="gcap">이 행사들은 구글 검색으로 찾았어요 · 눌러서 더 찾아보기</p>
     <iframe className="gsugg" title="Google 검색 추천" srcDoc={`<!doctype html><meta charset="utf-8"><base target="_blank"><body style="margin:0">${html}</body>`}
       sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" style={{ height: h }}
       onLoad={(e) => { const d = (e.target as HTMLIFrameElement).contentDocument; if (d) setH(Math.min(160, d.body.scrollHeight + 4)); }} />
-    </div>
   );
 }
 
