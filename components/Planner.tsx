@@ -16,38 +16,46 @@ interface Query { start: string; end: string; taste: Taste; flight: number }
 
 export default function Planner({ cities, seoulHi, alerts, alertDate, today }: Props) {
   const todayD = parseDate(today);
-  const defStart = iso(addDays(todayD, 14 + ((6 - todayD.getDay() + 7) % 7)));
-  const defEnd = iso(addDays(parseDate(defStart), 7));
 
-  const [start, setStart] = useState(defStart);
-  const [end, setEnd] = useState(defEnd);
-  const [taste, setTaste] = useState<Taste>("warm");
-  const [flight, setFlight] = useState(autoFlight(8));
-  const [flightNote, setFlightNote] = useState("8일 일정이라 15시간 이내로 맞췄어요. 직접 바꿔도 돼요.");
-  const [query, setQuery] = useState<Query>({ start: defStart, end: defEnd, taste: "warm", flight: autoFlight(8) });
+  // 처음엔 비어 있어요. 날짜·날씨를 고르고 "찾기"를 눌러야 결과가 나와요
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [taste, setTaste] = useState<Taste | null>(null);
+  const [flight, setFlight] = useState(25);
+  const [flightNote, setFlightNote] = useState("날짜를 고르면 일정 길이에 맞춰 자동으로 정해줘요.");
+  const [query, setQuery] = useState<Query | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [holOpen, setHolOpen] = useState(false);
   const [shareFor, setShareFor] = useState<Result | null>(null);
-  const first = useRef(true);
   const lastLen = useRef(7);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  const s = parseDate(start), e = parseDate(end);
-  const dateErr = e < s;
-  const days = Math.round((e.getTime() - s.getTime()) / 864e5) + 1;
+  const hasDates = !!start && !!end;
+  const s = start ? parseDate(start) : null, e = end ? parseDate(end) : null;
+  const dateErr = !!s && !!e && e < s;
+  const days = s && e ? Math.round((e.getTime() - s.getTime()) / 864e5) + 1 : 0;
+  const ready = hasDates && !dateErr && !!taste;
 
-  // 입력이 바뀌면 "설레는 중" 로딩을 잠깐 보여주고 결과를 바꿔요
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    if (dateErr) return;
+  function run(q: Query, scroll: boolean) {
     setLoading(true);
+    if (scroll) setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(() => { setQuery({ start, end, taste, flight }); setShowAll(false); setLoading(false); }, reduce ? 250 : 1500);
+    return setTimeout(() => { setQuery(q); setShowAll(false); setLoading(false); }, reduce ? 250 : 1500);
+  }
+  function search() { if (ready && taste) run({ start, end, taste, flight }, true); }
+
+  // 한 번 찾은 뒤에는 조건을 바꾸면 바로 다시 찾아요
+  useEffect(() => {
+    if (!query || !ready || !taste) return;
+    if (query.start === start && query.end === end && query.taste === taste && query.flight === flight) return;
+    const t = run({ start, end, taste, flight }, false);
     return () => clearTimeout(t);
-  }, [start, end, taste, flight, dateErr]);
+  }, [start, end, taste, flight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function applyDates(a: string, b: string) {
     setStart(a); setEnd(b);
+    if (!a || !b) return;
     const n = Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 864e5) + 1;
     if (n >= 1) {
       lastLen.current = n - 1;
@@ -59,11 +67,12 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   function onStart(v: string) {
     if (!v) return;
     // 가는 날을 오는 날 뒤로 옮기면 일정 길이를 유지한 채 오는 날도 밀어줘요
-    const b = parseDate(end) < parseDate(v) ? iso(addDays(parseDate(v), lastLen.current)) : end;
+    const b = end && parseDate(end) < parseDate(v) ? iso(addDays(parseDate(v), lastLen.current)) : end;
     applyDates(v, b);
   }
 
-  const { results, excluded, hidden, qDays, qStart, rangeText } = useMemo(() => {
+  const out = useMemo(() => {
+    if (!query) return null;
     const qs = parseDate(query.start), qe = parseDate(query.end);
     const { weights, days } = monthWeights(qs, qe);
     const mid = new Date((qs.getTime() + Math.min(qe.getTime(), qs.getTime() + 61 * 864e5)) / 2);
@@ -76,6 +85,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       qDays: days, qStart: qs, rangeText: `${md(qs)}–${md(qe)}`,
     };
   }, [query, cities, alerts, seoulHi]);
+  const results = out?.results ?? [];
 
   const holidayLabel = useMemo(() => {
     const hit = holidayOptions(todayD, false, 0).concat(holidayOptions(todayD, true, 5))
@@ -84,6 +94,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
   }, [start, end, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rest = results.slice(1, showAll ? results.length : 5);
+  const missing = !hasDates ? "여행 날짜를 골라주세요" : dateErr ? "날짜를 다시 확인해 주세요" : !taste ? "원하는 날씨를 골라주세요" : "";
 
   return (
     <>
@@ -98,10 +109,10 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           <div className="block">
             <p className="lab">여행 기간</p>
             <div className="dates">
-              <label className="dbox"><span>가는 날</span><input type="date" value={start} min={today} onChange={(ev) => onStart(ev.target.value)} /></label>
-              <label className={`dbox${dateErr ? " err" : ""}`}><span>오는 날</span><input type="date" value={end} min={start} onChange={(ev) => ev.target.value && applyDates(start, ev.target.value)} /></label>
+              <label className="dbox"><span>가는 날</span><input type="date" value={start} min={today} aria-label="가는 날" onChange={(ev) => onStart(ev.target.value)} /></label>
+              <label className={`dbox${dateErr ? " err" : ""}`}><span>오는 날</span><input type="date" value={end} min={start || today} aria-label="오는 날" onChange={(ev) => ev.target.value && applyDates(start, ev.target.value)} /></label>
             </div>
-            <div className={`days${dateErr ? " err" : ""}`}>{dateErr ? "오는 날이 가는 날보다 빨라요. 날짜를 다시 골라주세요." : `${days - 1}박 ${days}일${days >= 62 ? " · 최대 62일까지 계산해요" : ""}`}</div>
+            <div className={`days${dateErr ? " err" : ""}`}>{dateErr ? "오는 날이 가는 날보다 빨라요. 날짜를 다시 골라주세요." : hasDates ? `${days - 1}박 ${days}일${days >= 62 ? " · 최대 62일까지 계산해요" : ""}` : <span className="hint">가는 날과 오는 날을 골라주세요</span>}</div>
             <button type="button" className="hollink" onClick={() => setHolOpen(true)}>
               <span aria-hidden="true">🗓</span> 연휴로 채우기 {holidayLabel && <small>· {holidayLabel}</small>}<span className="chev" aria-hidden="true">›</span>
             </button>
@@ -125,18 +136,34 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
             <div className="ticks" aria-hidden="true"><span>5시간</span><span>10</span><span>15</span><span>20</span><span>제한 없음</span></div>
             <div className="auto">{flightNote}</div>
           </div>
+
+          {!query && (
+            <div className="block">
+              <button type="button" className="go" disabled={!ready || loading} onClick={search}>✈️ 제철 여행지 찾기</button>
+              <p className="gohint" aria-live="polite">{missing || "준비 완료! 눌러서 찾아보세요"}</p>
+            </div>
+          )}
         </section>
 
+        <div ref={resultsRef} className="anchor" />
+        {!query && !loading ? (
+          <div className="intro">
+            <span className="em" aria-hidden="true">🧳</span>
+            <b>날짜와 날씨만 골라주세요</b>
+            <p>그 기간에 우기·태풍·폭염을 피해서 딱 좋은 곳을 찾아드려요.<br />연휴가 있다면 <button type="button" className="linkbtn" onClick={() => setHolOpen(true)}>연휴로 채우기</button>부터 해보세요.</p>
+          </div>
+        ) : (
+        <>
         <div className="sumline">
           <h2>추천 여행지</h2>
-          <span>{loading ? "찾는 중…" : `${results.length}곳 찾았어요${hidden ? ` · 먼 곳 ${hidden}곳 숨김` : ""}`}</span>
+          <span>{loading || !out ? "찾는 중…" : `${results.length}곳 찾았어요${out.hidden ? ` · 먼 곳 ${out.hidden}곳 숨김` : ""}`}</span>
         </div>
 
-        {loading ? <Loader tasteName={TASTES[taste].name} /> : results.length === 0 ? (
+        {loading || !out || !query ? <Loader tasteName={TASTES[(taste ?? "warm")].name} /> : results.length === 0 ? (
           <div className="empty">이 기간엔 원하는 날씨인 곳이 없어요.<br />날씨를 바꾸거나 비행시간을 늘려보세요.</div>
         ) : (
           <>
-            <BoardingPass r={results[0]} taste={query.taste} rangeText={rangeText} alertDate={alertDate} q={query} onShare={() => setShareFor(results[0])} />
+            <BoardingPass r={results[0]} taste={query.taste} rangeText={out.rangeText} alertDate={alertDate} q={query} onShare={() => setShareFor(results[0])} />
             <div className="list">
               {rest.map((r, i) => <ResultItem key={r.city.name} r={r} rank={i + 2} taste={query.taste} alertDate={alertDate} q={query} />)}
             </div>
@@ -144,10 +171,14 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           </>
         )}
 
-        <details className="card log">
-          <summary>날씨·안전 때문에 빠진 곳 <span>{excluded.length}곳</span></summary>
-          <ul>{excluded.map((x) => <li key={x.city.name}><b>{x.city.name}</b><span>{x.reasons.join(" · ")}</span></li>)}</ul>
-        </details>
+        {out && !loading && (
+          <details className="card log">
+            <summary>날씨·안전 때문에 빠진 곳 <span>{out.excluded.length}곳</span></summary>
+            <ul>{out.excluded.map((x) => <li key={x.city.name}><b>{x.city.name}</b><span>{x.reasons.join(" · ")}</span></li>)}</ul>
+          </details>
+        )}
+        </>
+        )}
         <p className="foot">
           기후는 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>(ERA5, CC BY 4.0)의 2021–2024년 일별 기록으로 낸 월 평균이에요.
           여행경보는 외교부 공공데이터({alertDate} 기준)로, 출국권고(3단계) 이상이거나 특별여행주의보가 내려진 곳은 추천에서 빼요.
@@ -156,7 +187,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
       </div>
 
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
-      {shareFor && <ShareSheet r={shareFor} start={qStart} days={qDays} rangeText={rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
+      {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </>
   );
 }
