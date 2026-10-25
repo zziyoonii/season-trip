@@ -162,7 +162,10 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 @keyframes march{to{stroke-dashoffset:-28}}
 @media (prefers-reduced-motion:reduce){.loader .trail{animation:none}}
 .sharebtn{font:inherit;font-size:15px;font-weight:800;border:0;border-radius:14px;padding:14px;background:var(--orange);color:#191F28;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-.sharebtn:focus-visible,.sheet button:focus-visible,.sheet input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.book{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.book a{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;background:#E8EEFC;color:var(--navy, #1D3F9E);font-size:14px;font-weight:800;text-decoration:none}
+.book a:active{transform:scale(.98)}
+.book a:focus-visible,.sharebtn:focus-visible,.sheet button:focus-visible,.sheet input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .scrim{position:fixed;inset:0;z-index:20;background:rgba(14,20,32,.55);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);width:100%;max-width:520px;max-height:100%;overflow-y:auto;border-radius:24px 24px 0 0;padding:18px max(18px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
 .sheet h3{margin:0;font-size:18px;font-weight:800}

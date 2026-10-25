@@ -358,6 +358,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
         <p className="why">{whyLine(r, taste)}</p>
         <Notes r={r} alertDate={alertDate} />
         <Festivals r={r} q={q} />
+        <BookLinks r={r} q={q} rank={1} />
         <button type="button" className="sharebtn" onClick={onShare}>✈️ 탑승권 자랑하기</button>
       </div>
     </article>
@@ -380,8 +381,31 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
         <p className="why">{whyLine(r, taste)}</p>
         <Notes r={r} alertDate={alertDate} />
         {open && <Festivals r={r} q={q} />}
+        {open && <BookLinks r={r} q={q} rank={rank} />}
       </div>
     </details>
+  );
+}
+
+/**
+ * 항공권·숙소 검색으로 바로 넘겨요. 지금은 일반 검색 링크(수익 없음)로 클릭 수요를 먼저 보고,
+ * 제휴 승인(아고다 파트너스 등)이 나면 flightUrl/hotelUrl 만 제휴 링크로 바꾸면 돼요. (로고는 쓰지 않고 글자만)
+ */
+function flightUrl(code: string, start: string, end: string) {
+  const ymd = (s: string) => s.slice(2).replace(/-/g, "");
+  return `https://www.skyscanner.co.kr/transport/flights/icn/${code.toLowerCase()}/${ymd(start)}/${ymd(end)}/?adultsv2=1&cabinclass=economy`;
+}
+function hotelUrl(city: string, start: string, end: string) {
+  const los = Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 864e5));
+  return `https://www.agoda.com/ko-kr/search?textToSearch=${encodeURIComponent(city)}&checkIn=${start}&los=${los}&rooms=1&adults=2&children=0`;
+}
+function BookLinks({ r, q, rank }: { r: Result; q: Query; rank: number }) {
+  const p = { city: r.city.name, rank };
+  return (
+    <div className="book">
+      <a href={flightUrl(r.city.code, q.start, q.end)} target="_blank" rel="noopener" onClick={() => track("flight_click", p)}>✈️ 항공권 보기</a>
+      <a href={hotelUrl(r.city.name, q.start, q.end)} target="_blank" rel="noopener" onClick={() => track("hotel_click", p)}>🏨 숙소 보기</a>
+    </div>
   );
 }
 
