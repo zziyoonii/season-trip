@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import data from "@/data/cities.json";
-import { findFestivals } from "@/lib/festivals";
+import { findFestivals, inTrip } from "@/lib/festivals";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const lastDay = (y: number, m: number) => new Date(y, m, 0).getDate();
@@ -9,7 +9,7 @@ const lastDay = (y: number, m: number) => new Date(y, m, 0).getDate();
 // 도시 × (시작 월 ~ 끝 월) 단위로 일주일 캐시 → 같은 "11월 홍콩"은 한 번만 검색
 const cached = unstable_cache(
   async (city: string, country: string, from: string, to: string) => findFestivals(city, country, from, to),
-  ["festivals-v2"], // v1에는 키 넣기 전 '결과 없음'이 캐시돼 있을 수 있어서 버전 올림
+  ["festivals-v3"], // v3: 한국어·날짜(start/end) 형식으로 바뀌어서 버전 올림
   { revalidate: 60 * 60 * 24 * 7 },
 );
 
@@ -32,8 +32,12 @@ export async function GET(req: Request) {
   try {
     const ans = await cached(city.name, city.country, from, to);
     if (!ans) return NextResponse.json({ live: false, reason: "no_key" });
-    if (!ans.items.length) console.info(`[festivals] ${city.name} ${from}~${to}: 검색은 됐지만 날짜가 확인된 행사 없음 (${ans.model})`);
-    return NextResponse.json({ live: true, reason: ans.items.length ? "ok" : "empty", from, to, ...ans });
+    // 검색 없이 기억으로 답한 건 날짜를 믿기 어려워서 대표 행사로 대신해요
+    if (!ans.grounded) return NextResponse.json({ live: false, reason: "ungrounded", model: ans.model });
+    // 캐시는 한 달 단위라, 실제 여행 날짜와 겹치는 것만 다시 골라요
+    const items = inTrip(ans.items, start, end);
+    if (!items.length) console.info(`[festivals] ${city.name} ${start}~${end}: 검색은 됐지만 여행 기간과 겹치는 행사 없음 (월 전체 ${ans.items.length}개)`);
+    return NextResponse.json({ live: true, reason: items.length ? "ok" : "empty", from, to, ...ans, items });
   } catch (e) {
     console.error("[festivals] Gemini 호출 실패:", e);
     return NextResponse.json({ live: false, reason: "error", error: String(e).slice(0, 300) });
