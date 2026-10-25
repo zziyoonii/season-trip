@@ -408,9 +408,9 @@ function flightUrl(code: string, start: string, end: string) {
   const ymd = (s: string) => s.slice(2).replace(/-/g, "");
   return `https://www.skyscanner.co.kr/transport/flights/icn/${code.toLowerCase()}/${ymd(start)}/${ymd(end)}/?adultsv2=1&cabinclass=economy`;
 }
+// 아고다는 도시 이름으로는 검색이 안 채워져서(도시 고유번호 필요) 일단 부킹닷컴. 아고다 파트너스 승인 후 도시 번호로 교체
 function hotelUrl(city: string, start: string, end: string) {
-  const los = Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 864e5));
-  return `https://www.agoda.com/ko-kr/search?textToSearch=${encodeURIComponent(city)}&checkIn=${start}&los=${los}&rooms=1&adults=2&children=0`;
+  return `https://www.booking.com/searchresults.ko.html?ss=${encodeURIComponent(city)}&checkin=${start}&checkout=${end}&group_adults=2&no_rooms=1&group_children=0`;
 }
 function BookLinks({ r, q, rank }: { r: Result; q: Query; rank: number }) {
   const p = { city: r.city.name, rank };
