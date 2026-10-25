@@ -243,7 +243,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
           <div className="intro">
             <span className="em" aria-hidden="true">🧳</span>
             <b>날짜와 날씨만 골라주세요</b>
-            <p>그 기간에 우기·태풍·폭염을 피해서 딱 좋은 곳을 찾아드려요.<br />연휴가 있다면 <button type="button" className="linkbtn" onClick={() => setHolOpen(true)}>연휴로 채우기</button>부터 해보세요.</p>
+            <p>그 기간에 우기·태풍·폭염을 피해서 딱 좋은 곳을 찾아드려요.<br />설·추석 같은 연휴에 떠난다면 <button type="button" className="linkbtn" onClick={() => setHolOpen(true)}>연휴 목록</button>에서 고르면 날짜가 바로 채워져요.</p>
           </div>
         ) : (
         <>
