@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+// GA4 측정 ID는 공개돼도 되는 값이라 기본값으로 둬요. 로컬 개발(npm run dev)에서는 안 붙여요
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || (process.env.NODE_ENV === "production" ? "G-HXYXYNVZET" : undefined);
 
 export const metadata: Metadata = {
   title: "제철 여행지",
