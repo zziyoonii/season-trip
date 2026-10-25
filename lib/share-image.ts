@@ -38,7 +38,7 @@ export async function drawShareImage({ r, start, days, rangeText, rainWord, pass
   const nw = x.measureText(city.name + " ").width;
   x.fillStyle = ORANGE; x.fillText("가요", 80 + nw, 410);
   x.fillStyle = "#4E5968"; x.font = `500 34px ${FONT}`;
-  x.fillText(`${days - 1}박 ${days}일, 날씨 보고 고른 제철 여행지`, 80, 490);
+  x.fillText(`${days - 1}박 ${days}일, 날씨 보고 골랐어요`, 80, 490);
 
   // 이모지 스티커
   const sticker = (cx: number, cy: number, rad: number, emo: string, fs: number, rot: number) => {
@@ -101,7 +101,7 @@ export async function drawShareImage({ r, start, days, rangeText, rainWord, pass
   x.fillStyle = "rgba(255,255,255,.9)"; [24, 44].forEach((cy) => { x.beginPath(); x.arc(100, cy, 3.5, 0, Math.PI * 2); x.fill(); });
   x.restore();
   x.fillStyle = INK; x.font = `900 44px ${FONT}`; x.fillText("나가요", fx + 144, fy + 30);
-  x.fillStyle = MUTED; x.font = `500 26px ${FONT}`; x.fillText("날씨 보고 고르는 제철 여행지 · nagayo.vercel.app", fx + 144, fy + 72);
+  x.fillStyle = MUTED; x.font = `500 26px ${FONT}`; x.fillText("날씨 보고 고르는 해외여행 · nagayo.vercel.app", fx + 144, fy + 72);
 
   return new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("이미지를 만들지 못했어요"))), "image/png"));
 }

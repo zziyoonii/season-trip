@@ -148,7 +148,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     <div className="scroller" id="scroller">
       <div className="app">
         <header className="bar">
-          <div className="logo"><Logo /><span>나가요<small>제철 여행지</small></span></div>
+          <div className="logo"><Logo /><span>나가요<small>날씨 보고 고르는 해외여행</small></span></div>
                   </header>
 
         <section className="card" aria-label="여행 조건">
@@ -227,7 +227,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
 
           {mode === "dates" && !query && (
             <div className="block">
-              <button type="button" className="go" disabled={!ready || loading} onClick={search}>✈️ 제철 여행지 찾기</button>
+              <button type="button" className="go" disabled={!ready || loading} onClick={search}>✈️ 여행지 찾기</button>
               <p className="gohint" aria-live="polite">{missing || "준비 완료! 눌러서 찾아보세요"}</p>
             </div>
           )}
@@ -240,7 +240,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
             <div className="intro">
               <span className="em" aria-hidden="true">🔥</span>
               <b>올해 연차, 그냥 날리지 마세요</b>
-              <p>남은 연차와 원하는 날씨만 알려주시면<br />주말·공휴일을 붙여 가장 길게 쉬는 계획과 그때 제철인 곳을 찾아드려요.</p>
+              <p>남은 연차와 원하는 날씨만 알려주시면<br />주말·공휴일을 붙여 가장 길게 쉬는 계획과 그때 날씨 좋은 곳을 찾아드려요.</p>
             </div>
           ) : plans.length === 0 ? (
             <div className="empty">기한 안에 쓸 수 있는 평일이 부족해요.<br />소진 기한을 늘려보세요.</div>
@@ -338,7 +338,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
   return (
     <article className="pass">
       <div className="ptop">
-        <div className="prow"><span className="k">딱 그때, 제철 여행지</span></div>
+        <div className="prow"><span className="k">딱 그때 날씨 좋은 곳</span></div>
         <div className="city"><h3>{city.name} <span aria-hidden="true">{city.emoji}</span></h3><span>{city.country}</span></div>
         <div className="route" aria-label={`인천에서 ${city.name}까지 약 ${city.flight}시간`}>
           <div><b>ICN</b><span>인천</span></div>
