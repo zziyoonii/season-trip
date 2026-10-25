@@ -148,7 +148,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     <div className="scroller" id="scroller">
       <div className="app">
         <header className="bar">
-          <div className="logo"><Logo /><span>나가요<small>날씨 보고 고르는 해외여행</small></span></div>
+          <div className="logo"><Logo /><span>나가요<small>휴가는 정했고, 어디 가지?</small></span></div>
                   </header>
 
         <section className="card" aria-label="여행 조건">
