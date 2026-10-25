@@ -142,7 +142,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today }: P
     <>
       <div className="app">
         <header className="bar">
-          <div className="logo"><Logo />제철 여행지</div>
+          <div className="logo"><Logo /><span>나가요<small>제철 여행지</small></span></div>
           <span className="from">인천 출발</span>
         </header>
 
@@ -519,13 +519,13 @@ function ShareSheet({ r, start, days, rangeText, rainWord, onClose }: { r: Resul
   }
   useEffect(() => { const t = setTimeout(() => render(name.trim()), name ? 300 : 0); return () => clearTimeout(t); }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filename = `제철여행지_${r.city.name}.png`;
+  const filename = `나가요_${r.city.name}.png`;
   async function share() {
     const blob = (await render(name.trim())) ?? blobRef.current;
     if (!blob) return;
     track("share", { method: "web_share", city: r.city.name, with_name: !!name.trim() });
     try {
-      await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], text: `나 ${start.getMonth() + 1}월에 ${r.city.name} 가요 ✈️` });
+      await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], text: `나 ${start.getMonth() + 1}월에 ${r.city.name} 가요 ✈️ #나가요여행 nagayo.vercel.app` });
     } catch (e) {
       if ((e as Error).name !== "AbortError") setMsg("공유를 열지 못했어요. 이미지 저장을 눌러주세요.");
     }
@@ -566,7 +566,7 @@ function Logo() {
       <defs><mask id="lgT"><rect width="170" height="96" rx="14" fill="#fff" /><circle cx="0" cy="48" r="12" fill="#000" /><circle cx="170" cy="48" r="12" fill="#000" /></mask></defs>
       <rect width="170" height="96" rx="14" fill="#1D3F9E" mask="url(#lgT)" />
       <line x1="118" y1="14" x2="118" y2="82" stroke="#fff" strokeOpacity=".5" strokeWidth="4" strokeDasharray="7 7" />
-      <text x="22" y="64" fontFamily="Noto Sans KR, sans-serif" fontWeight="900" fontSize="40" letterSpacing="-2" fill="#fff">제철</text>
+      <text x="16" y="60" fontFamily="Noto Sans KR, sans-serif" fontWeight="900" fontSize="31" letterSpacing="-2" fill="#fff">나가요</text>
       <g transform="translate(144 48) rotate(45) scale(1.4) translate(-12 -12)"><path d={PLANE_D} fill="#F28C28" /></g>
     </svg>
   );

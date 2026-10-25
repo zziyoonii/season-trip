@@ -60,7 +60,7 @@ export async function drawShareImage({ r, start, days, rangeText, rainWord, pass
   x.save(); rr(x, tx, ty, tw, topH + botH, 44); x.clip(); x.fillStyle = NAVY; x.fillRect(tx, ty, tw, topH); x.restore();
   const L = tx + 58, Rt = tx + tw - 58;
   x.textAlign = "left"; x.font = `800 28px ${FONT}`; x.fillStyle = "#F7A456"; x.fillText("BOARDING PASS", L, ty + 78);
-  x.textAlign = "right"; x.fillStyle = SOFT; x.font = `700 28px ${FONT}`; x.fillText(passenger ? `탑승객 ${passenger}` : "제철 여행지 탑승권", Rt, ty + 78);
+  x.textAlign = "right"; x.fillStyle = SOFT; x.font = `700 28px ${FONT}`; x.fillText(passenger ? `탑승객 ${passenger}` : "나가요 탑승권", Rt, ty + 78);
   x.textAlign = "left"; x.font = `500 26px ${FONT}`; x.fillText("출발", L, ty + 168);
   x.fillStyle = "#fff"; x.font = `900 116px ${FONT}`; x.fillText("ICN", L - 4, ty + 282);
   x.fillStyle = SOFT; x.font = `500 30px ${FONT}`; x.fillText("인천", L, ty + 330);
@@ -97,10 +97,10 @@ export async function drawShareImage({ r, start, days, rangeText, rainWord, pass
   x.fillStyle = NAVY; rr(x, 0, 0, 120, 68, 10); x.fill();
   x.fillStyle = BG; [0, 120].forEach((cx) => { x.beginPath(); x.arc(cx, 34, 8.5, 0, Math.PI * 2); x.fill(); });
   x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(83, 10); x.lineTo(83, 58); x.stroke(); x.setLineDash([]);
-  x.fillStyle = "#fff"; x.font = `900 25px ${FONT}`; x.textAlign = "left"; x.fillText("제철", 15, 44);
+  x.fillStyle = "#fff"; x.font = `900 20px ${FONT}`; x.textAlign = "left"; x.fillText("나가요", 11, 41);
   plane(x, 102, 34, 20, 45, ORANGE); x.restore();
-  x.fillStyle = INK; x.font = `900 44px ${FONT}`; x.fillText("제철 여행지", fx + 144, fy + 30);
-  x.fillStyle = MUTED; x.font = `500 26px ${FONT}`; x.fillText("너의 휴가엔 어디가 제철일까?", fx + 144, fy + 72);
+  x.fillStyle = INK; x.font = `900 44px ${FONT}`; x.fillText("나가요", fx + 144, fy + 30);
+  x.fillStyle = MUTED; x.font = `500 26px ${FONT}`; x.fillText("날씨 보고 고르는 제철 여행지 · nagayo.vercel.app", fx + 144, fy + 72);
 
   return new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("이미지를 만들지 못했어요"))), "image/png"));
 }

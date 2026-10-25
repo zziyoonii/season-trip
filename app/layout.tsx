@@ -6,9 +6,10 @@ import "./globals.css";
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || (process.env.NODE_ENV === "production" ? "G-HXYXYNVZET" : undefined);
 
 export const metadata: Metadata = {
-  title: "제철 여행지",
-  description: "여행 기간과 원하는 날씨를 고르면, 그때 딱 제철인 해외 여행지를 찾아드려요.",
-  openGraph: { title: "제철 여행지", description: "너의 휴가엔 어디가 제철일까?", locale: "ko_KR", type: "website" },
+  title: "나가요 · 날씨 보고 고르는 제철 여행지",
+  description: "여행 기간과 원하는 날씨를 고르면, 그때 딱 제철인 해외 여행지를 찾아드려요. 남은 연차로 가장 길게 쉬는 계획도 짜드려요.",
+  metadataBase: new URL("https://nagayo.vercel.app"),
+  openGraph: { title: "나가요 ✈️", description: "너의 휴가엔 어디가 제철일까? 연차 쓰고 나가요.", url: "https://nagayo.vercel.app", siteName: "나가요", locale: "ko_KR", type: "website" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F1F3F7" };
 

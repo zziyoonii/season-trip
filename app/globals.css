@@ -1,7 +1,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 
-/* 제철 여행지 · 폰 폭 앱 레이아웃: 고정 앱바, 입력 카드, 1순위 탑승권, 나머지 리스트 */
+/* 나가요 · 폰 폭 앱 레이아웃: 고정 앱바, 입력 카드, 1순위 탑승권, 나머지 리스트 */
 :root{
   --bg:#F1F3F7; --card:#FFFFFF; --ink:#191F28; --sub:#4E5968; --muted:#8B95A1; --line:#E5E8EB; --fill:#F2F4F6;
   --accent:#1D3F9E; --accent-soft:#E9EEFA; --orange:#F28C28; --orange-ink:#B85E0C; --orange-soft:#FFF3E8; --warn:#C2410C; --warn-soft:#FDEEE6; --navy:#1D3F9E; --on-navy:#C9D5F5;
@@ -228,3 +228,5 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 .trip .dest b{display:block;font-size:14px;font-weight:800}
 .trip .dest small{font-size:12px;color:var(--muted)}
 .trip .chev{color:var(--muted);font-size:18px}
+.logo>span{display:flex;align-items:baseline;gap:6px}
+.logo small{font-size:12px;font-weight:600;color:var(--muted)}
