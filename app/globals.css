@@ -237,7 +237,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
 .logo>span{display:flex;align-items:baseline;gap:6px}
 .logo small{font-size:12px;font-weight:600;color:var(--muted)}
 .leavein{display:flex;align-items:baseline;gap:2px;cursor:text}
-.leavein input{font:inherit;width:3ch;text-align:right;border:0;background:transparent;color:var(--ink);font-size:24px;font-weight:900;padding:0;-moz-appearance:textfield;appearance:textfield}
+.leavein input{font:inherit;width:4ch;text-align:right;border:0;background:transparent;color:var(--ink);font-size:24px;font-weight:900;padding:0;-moz-appearance:textfield;appearance:textfield}
 .leavein input::-webkit-outer-spin-button,.leavein input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .leavein input:focus{outline:none;border-bottom:2px solid var(--accent)}
 .leavein input::placeholder{color:var(--muted)}
@@ -352,3 +352,4 @@ button.dbox:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 .doc a{color:var(--accent)}
 .doc .muted{color:var(--muted);font-size:13px}
 .doc .back{font-size:14px;font-weight:700;text-decoration:none}
+.labsub{font-size:12px;font-weight:500;color:var(--muted);margin-left:4px}

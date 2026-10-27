@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
 import { PUBLIC_HOLIDAYS, holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
-import { planLeave, leaveRanges, type LeavePlan, type LeaveWindow } from "@/lib/leave";
+import { planLeave, leaveRanges, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
 import type { AlertMap, City, Result, Taste } from "@/lib/types";
@@ -75,7 +75,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
     track("search", { taste, days, flight, start, holiday: holidayLabel || undefined });
     run({ start, end, taste, flight }, true);
   }
-  const leaveReady = leaveN >= 1 && !!taste && !!deadline && parseDate(deadline) > todayD;
+  const leaveReady = leaveN >= 0.5 && !!taste && !!deadline && parseDate(deadline) > todayD;
   function planSearch() {
     if (!leaveReady || !taste) return;
     track("leave_plan", { leave_days: leaveN, deadline, taste });
@@ -87,7 +87,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   function pickWindow(w: LeaveWindow) {
     if (!taste) return;
     const a = iso(w.start), b = iso(w.end);
-    track("leave_pick", { start: a, days: w.len, leave_used: w.used, taste });
+    track("leave_pick", { start: a, days: restDays(w), leave_used: w.used, half: !!w.half, taste });
     setMode("dates"); applyDates(a, b);
     const f = autoFlight(w.len);
     run({ start: a, end: b, taste, flight: f }, true);
@@ -161,16 +161,16 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
             <>
               <h1>남은 연차,<br />어디서 쓸까요?</h1>
               <div className="block">
-                <p className="lab">남은 연차</p>
+                <p className="lab">남은 연차 <small className="labsub">반차는 0.5일</small></p>
                 <div className="leaven">
-                  <button type="button" aria-label="하루 줄이기" disabled={leaveN <= 0} onClick={() => setLeaveN(leaveN - 1)}>−</button>
+                  <button type="button" aria-label="반나절 줄이기" disabled={leaveN <= 0} onClick={() => setLeaveN(Math.max(0, leaveN - 0.5))}>−</button>
                   <label className="leavein">
-                    <input type="number" inputMode="numeric" min={0} max={30} placeholder="0" aria-label="남은 연차 일수"
-                      value={leaveN || ""} onChange={(ev) => { const v = parseInt(ev.target.value, 10); setLeaveN(Number.isNaN(v) ? 0 : Math.max(0, Math.min(30, v))); }}
+                    <input type="number" inputMode="decimal" min={0} max={30} step={0.5} placeholder="0" aria-label="남은 연차 일수 (반차는 0.5)"
+                      value={leaveN || ""} onChange={(ev) => { const v = parseFloat(ev.target.value); setLeaveN(Number.isNaN(v) ? 0 : Math.max(0, Math.min(30, Math.round(v * 2) / 2))); }}
                       onFocus={(ev) => ev.target.select()} />
                     <span>일</span>
                   </label>
-                  <button type="button" aria-label="하루 늘리기" disabled={leaveN >= 30} onClick={() => setLeaveN(leaveN + 1)}>+</button>
+                  <button type="button" aria-label="반나절 늘리기" disabled={leaveN >= 30} onClick={() => setLeaveN(Math.min(30, leaveN + 0.5))}>+</button>
                 </div>
               </div>
               <div className="block">
@@ -219,7 +219,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
           {mode === "leave" && !leaveQ && (
             <div className="block">
               <button type="button" className="go" disabled={!leaveReady || loading} onClick={planSearch}>🔥 연차 계획 짜기</button>
-              <p className="gohint" aria-live="polite">{leaveN < 1 ? "남은 연차를 알려주세요" : !taste ? "원하는 날씨를 골라주세요" : "준비 완료! 눌러서 계획을 받아보세요"}</p>
+              <p className="gohint" aria-live="polite">{leaveN < 0.5 ? "남은 연차를 알려주세요" : !taste ? "원하는 날씨를 골라주세요" : "준비 완료! 눌러서 계획을 받아보세요"}</p>
             </div>
           )}
           {mode === "leave" && leaveQ && (leaveQ.n !== leaveN || leaveQ.deadline !== deadline || leaveQ.taste !== taste) && (
@@ -329,13 +329,13 @@ function DateBtn({ label, value, err, onClick }: { label: string; value: string;
 /* ───────── 연차 계획 ───────── */
 
 function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindow; best: Result | null }[] }; onPick: (w: LeaveWindow) => void }) {
-  const tag = plan.kind === "all" ? "🧳" : plan.kind === "split" ? "✌️" : "⚡";
+  const tag = plan.kind === "all" ? "🧳" : plan.kind === "split" ? "✌️" : plan.kind === "half" ? "🌆" : "⚡";
   return (
     <article className="plan">
       <header><span className="ptag" aria-hidden="true">{tag}</span><div><b>{plan.title}</b><span>{plan.desc}</span></div></header>
       {plan.picks.map(({ w, best }) => (
         <button key={iso(w.start)} type="button" className="trip" onClick={() => onPick(w)}>
-          <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{w.len}일 쉬고 연차 {w.used}일</small><small className="lv">연차 쓰는 날 {leaveRanges(w)}</small></span>
+          <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{fmtDays(restDays(w))} 쉬고 연차 {w.used}일</small><small className="lv">연차 쓰는 날 {leaveRanges(w)}</small></span>
           {best ? (
             <span className="dest"><i aria-hidden="true">{best.city.emoji}</i><span><b>{best.city.name}</b><small>{best.hi.toFixed(0)}° · {best.city.flight}시간</small></span></span>
           ) : <span className="dest none">맞는 곳이 없어요</span>}
