@@ -16,7 +16,7 @@ const dl = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}(${WD[d.getDay()]})`;
 interface Props { cities: City[]; seoulHi: number[]; alerts: AlertMap; alertDate: string; alertLive: boolean; today: string; initialMode?: "dates" | "leave" }
 interface Query { start: string; end: string; taste: Taste; flight: number }
 
-export default function Planner({ cities, seoulHi, alerts, alertDate, today, initialMode = "dates" }: Props) {
+export default function Planner({ cities, seoulHi, alerts, alertDate, today, initialMode = "leave" }: Props) {
   const todayD = parseDate(today);
 
   // 처음엔 비어 있어요. 날짜·날씨를 고르고 "찾기"를 눌러야 결과가 나와요
@@ -154,8 +154,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
 
         <section className="card" aria-label="여행 조건">
           <div className="tabs" role="tablist" aria-label="찾는 방법">
-            <button type="button" role="tab" aria-selected={mode === "dates"} onClick={() => setMode("dates")}>날짜로 찾기</button>
             <button type="button" role="tab" aria-selected={mode === "leave"} onClick={() => { setMode("leave"); track("tab_leave"); }}>🔥 연차 소진</button>
+            <button type="button" role="tab" aria-selected={mode === "dates"} onClick={() => { setMode("dates"); track("tab_dates"); }}>날짜로 찾기</button>
           </div>
           {mode === "leave" ? (
             <>
