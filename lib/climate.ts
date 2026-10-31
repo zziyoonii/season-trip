@@ -107,18 +107,21 @@ const hue = (t: number) => 222 - clamp((t + 10) / 48) * 212;
 export const tempColor = (t: number) => `hsl(${hue(t)} 72% 48%)`;
 
 /**
- * 숄더 시즌: 그 도시가 이 취향으로 가장 좋은 달(상위 3개월)은 아니지만, 바로 옆 달이라 날씨는 괜찮고 덜 붐빌 수 있는 때.
+ * 숄더 시즌: 그 도시가 이 취향으로 가장 좋은 달(상위 3개월)의 바로 전 달(직전) 또는 다음 달(끝물). 날씨는 괜찮고 덜 붐빌 수 있는 때.
  * 실제 관광객 수 데이터가 아니라 기후 점수로만 판단해요.
  */
-export function isShoulder(c: City, taste: Taste, month: number, year: number, seoulHi: number[]): boolean {
+export function isShoulder(c: City, taste: Taste, month: number, year: number, seoulHi: number[]): "before" | "after" | null {
   const scores = Array.from({ length: 12 }, (_, k) => {
     const weights = Array(12).fill(0); weights[k] = 1;
     const start = new Date(year, k, 1), end = new Date(year, k + 1, 0);
     const r = evaluate(c, { weights, mid: new Date(year, k, 15), taste, maxFlight: 99, alerts: {}, seoulHi, start, end });
     return r && "score" in r ? r.score : -Infinity;
   });
-  if (!Number.isFinite(scores[month])) return false;
+  if (!Number.isFinite(scores[month])) return null;
   const top = scores.map((s, k) => ({ s, k })).filter((v) => Number.isFinite(v.s)).sort((a, b) => b.s - a.s).slice(0, 3).map((v) => v.k);
-  if (top.length < 3 || top.includes(month)) return false;
-  return top.some((k) => Math.min((k - month + 12) % 12, (month - k + 12) % 12) === 1);
+  if (top.length < 3 || top.includes(month)) return null;
+  // 다음 달이 최고 시즌이면 "직전", 지난달이 최고 시즌이면 "끝물"
+  if (top.includes((month + 1) % 12)) return "before";
+  if (top.includes((month + 11) % 12)) return "after";
+  return null;
 }

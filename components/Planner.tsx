@@ -419,7 +419,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
       <div className="perf" aria-hidden="true"><i /><i /></div>
       <div className="pbody">
         <p className="why">{whyLine(r, taste)}</p>
-        {r.shoulder && <p className="shoulder"><b>🍃 덜 붐빌 때예요</b> 이 도시 날씨 최고 시즌 바로 옆 달이라, 날씨는 괜찮고 사람은 덜할 수 있어요</p>}
+        <ShoulderNote when={r.shoulder} />
         <Notes r={r} alertDate={alertDate} />
         <Festivals r={r} q={q} />
         <BookLinks r={r} q={q} rank={1} />
@@ -443,7 +443,7 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
       </summary>
       <div className="body">
         <p className="why">{whyLine(r, taste)}</p>
-        {r.shoulder && <p className="shoulder"><b>🍃 덜 붐빌 때예요</b> 이 도시 날씨 최고 시즌 바로 옆 달이라, 날씨는 괜찮고 사람은 덜할 수 있어요</p>}
+        <ShoulderNote when={r.shoulder} />
         <Notes r={r} alertDate={alertDate} />
         {open && <Festivals r={r} q={q} />}
         {open && <BookLinks r={r} q={q} rank={rank} />}
@@ -465,6 +465,14 @@ function BookLinks({ r, q, rank }: { r: Result; q: Query; rank: number }) {
       {h.affiliate && <p className="aff">숙소 링크는 제휴 링크예요. 예약하면 나가요가 수수료를 받을 수 있고, 가격은 같아요.</p>}
     </>
   );
+}
+
+/** 덜 붐빌 때 안내 (성수기 직전/끝물) */
+function ShoulderNote({ when }: { when?: "before" | "after" | null }) {
+  if (!when) return null;
+  return when === "before"
+    ? <p className="shoulder"><b>🍃 성수기 직전이에요</b>날씨는 이미 좋은데, 사람들은 아직 안 몰려왔어요</p>
+    : <p className="shoulder"><b>🍃 성수기 끝물이에요</b>사람들은 빠졌는데, 날씨는 아직 좋아요</p>;
 }
 
 function Notes({ r, alertDate }: { r: Result; alertDate: string }) {
