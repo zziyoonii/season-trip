@@ -364,3 +364,5 @@ button.dbox:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 .trip .dest>span{min-width:0;max-width:104px}
 .trip .when b{white-space:nowrap}
 .trip .dest small.alts{display:block;font-size:11.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.planshare{font:inherit;font-size:14px;font-weight:800;border:0;border-radius:12px;padding:11px;margin-top:2px;background:var(--orange-soft);color:var(--orange-ink);cursor:pointer}
+.planshare:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

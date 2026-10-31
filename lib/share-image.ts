@@ -3,14 +3,14 @@ import { seoulDiff } from "./climate";
 import type { Result } from "./types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
-const FONT = '"Noto Sans KR", sans-serif';
-const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+export const FONT = '"Noto Sans KR", sans-serif';
+export const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
-function rr(x: CanvasRenderingContext2D, X: number, Y: number, w: number, h: number, r: number) {
+export function rr(x: CanvasRenderingContext2D, X: number, Y: number, w: number, h: number, r: number) {
   x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r);
   x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath();
 }
-function plane(x: CanvasRenderingContext2D, cx: number, cy: number, size: number, rot: number, color: string) {
+export function plane(x: CanvasRenderingContext2D, cx: number, cy: number, size: number, rot: number, color: string) {
   x.save(); x.translate(cx, cy); x.rotate((rot * Math.PI) / 180); x.scale(size / 24, size / 24); x.translate(-12, -12);
   x.fillStyle = color; x.fill(new Path2D(PLANE_D)); x.restore();
 }

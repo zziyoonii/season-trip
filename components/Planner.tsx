@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
 import { PUBLIC_HOLIDAYS, holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
+import { drawLeaveShareImage } from "@/lib/leave-share-image";
 import { planLeave, leaveRanges, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
@@ -34,6 +35,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   const [holOpen, setHolOpen] = useState(false);
   const [calOpen, setCalOpen] = useState<null | "start" | "end">(null);
   const [shareFor, setShareFor] = useState<Result | null>(null);
+  const [planShare, setPlanShare] = useState<PlanWithPicks | null>(null);
   const lastLen = useRef(7);
   // 연차 소진 모드
   const [mode, setMode] = useState<"dates" | "leave">(initialMode);
@@ -267,7 +269,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
           ) : (
             <>
               <div className="sumline"><h2>연차 계획</h2><span>연차 {leaveQ?.n}일 · {leaveQ && dl(parseDate(leaveQ.deadline))}까지</span></div>
-              <div className="plans">{plans.map((p) => <PlanCard key={p.kind} plan={p} onPick={pickWindow} />)}</div>
+              <div className="plans">{plans.map((p) => <PlanCard key={p.kind} plan={p} onPick={pickWindow} onShare={() => { track("plan_share_open", { kind: p.kind, leave_used: p.windows.reduce((s2, w) => s2 + w.used, 0) }); setPlanShare(p); }} />)}</div>
             </>
           )
         ) : !query && !loading ? (
@@ -313,6 +315,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
       <ScrollPlane />
       {calOpen && <RangeSheet today={today} start={start} end={end} phase={calOpen} onDone={(a, b) => { track("date_pick", { nights: Math.round((parseDate(b).getTime() - parseDate(a).getTime()) / 864e5) }); applyDates(a, b); setCalOpen(null); }} onClose={() => setCalOpen(null)} />}
       {holOpen && <HolidaySheet today={todayD} start={start} end={end} onPick={(a, b) => { track("holiday_pick", { start: a, end: b }); applyDates(a, b); setHolOpen(false); }} onClose={() => setHolOpen(false)} />}
+      {planShare && <PlanShareSheet plan={planShare} onClose={() => setPlanShare(null)} />}
       {shareFor && out && query && <ShareSheet r={shareFor} start={out.qStart} days={out.qDays} rangeText={out.rangeText} rainWord={query.taste === "snow" ? "눈·비" : "비"} onClose={() => setShareFor(null)} />}
     </div>
   );
@@ -348,7 +351,8 @@ function DateBtn({ label, value, err, onClick }: { label: string; value: string;
 
 /* ───────── 연차 계획 ───────── */
 
-function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindow; best: Result | null; alts: Result[] }[] }; onPick: (w: LeaveWindow, city: string | null) => void }) {
+type PlanWithPicks = LeavePlan & { picks: { w: LeaveWindow; best: Result | null; alts: Result[] }[] };
+function PlanCard({ plan, onPick, onShare }: { plan: PlanWithPicks; onPick: (w: LeaveWindow, city: string | null) => void; onShare: () => void }) {
   const tag = plan.kind === "all" ? "🧳" : plan.kind === "split" ? "✌️" : plan.kind === "half" ? "🌆" : "⚡";
   return (
     <article className="plan">
@@ -362,6 +366,7 @@ function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindo
           <span className="chev" aria-hidden="true">›</span>
         </button>
       ))}
+      <button type="button" className="planshare" onClick={onShare}>📤 이 계획 자랑하기</button>
     </article>
   );
 }
@@ -673,6 +678,57 @@ function HolidaySheet({ today, start, end, onPick, onClose }: { today: Date; sta
           </section>
         ))}
         <button type="button" className="holclose" onClick={onClose}>닫기</button>
+      </div>
+    </div>
+  );
+}
+
+/** 연차 계획 달력 이미지 공유 ("연차 8일로 16일 쉰다") */
+function PlanShareSheet({ plan, onClose }: { plan: PlanWithPicks; onClose: () => void }) {
+  const [url, setUrl] = useState("");
+  const [msg, setMsg] = useState("달력 그리는 중…");
+  const [canShare, setCanShare] = useState(false);
+  const blobRef = useRef<Blob | null>(null);
+  useSheet(onClose);
+  const used = plan.windows.reduce((s, w) => s + w.used, 0);
+  const total = plan.windows.reduce((s, w) => s + restDays(w), 0);
+  const city = plan.picks[0]?.best?.city ?? null;
+  useEffect(() => {
+    let alive = true;
+    drawLeaveShareImage({ windows: plan.windows, used, city }).then((blob) => {
+      if (!alive) return;
+      blobRef.current = blob;
+      setUrl(URL.createObjectURL(blob)); setMsg("");
+      setCanShare(!!navigator.canShare?.({ files: [new File([blob], "x.png", { type: "image/png" })] }));
+    }).catch(() => alive && setMsg("이미지를 만들지 못했어요"));
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  const filename = `나가요_연차${used}일_${fmtDays(total)}.png`;
+  async function share() {
+    const blob = blobRef.current; if (!blob) return;
+    track("plan_share", { method: "web_share", kind: plan.kind });
+    try {
+      await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], text: `연차 ${used}일로 ${fmtDays(total)} 쉰다 🔥 너도 계산해봐 nagayo.vercel.app/leave` });
+    } catch (e) { if ((e as Error).name !== "AbortError") setMsg("공유를 열지 못했어요. 이미지 저장을 눌러주세요."); }
+  }
+  function save() {
+    const blob = blobRef.current; if (!blob) return;
+    track("plan_share", { method: "download", kind: plan.kind });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    setMsg("저장했어요. 휴대폰에서는 미리보기 이미지를 길게 눌러도 사진에 저장돼요.");
+  }
+  return (
+    <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="planShareTitle">
+        <h3 id="planShareTitle">연차 계획 자랑하기</h3>
+        <div className="prev">{url ? <img src={url} alt={`연차 ${used}일로 ${fmtDays(total)} 쉬는 달력 이미지 미리보기`} /> : <div className="none">달력 그리는 중…</div>}</div>
+        <div className="row">
+          <button type="button" className="ghost" onClick={canShare ? save : onClose}>{canShare ? "이미지 저장" : "닫기"}</button>
+          <button type="button" className="primary" onClick={canShare ? share : save}>{canShare ? "인스타·카톡으로 공유" : "이미지 저장"}</button>
+        </div>
+        <p className="msg">{msg}</p>
       </div>
     </div>
   );
