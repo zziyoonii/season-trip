@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
+import { TASTES, autoFlight, evaluate, isShoulder, isExcluded, isResult, monthWeights, seoulDiff, tempColor, whyLine } from "@/lib/climate";
 import { PUBLIC_HOLIDAYS, holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
 import { drawLeaveShareImage } from "@/lib/leave-share-image";
@@ -59,7 +59,8 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
     const maxFlight = q.flight >= 25 ? 99 : q.flight + 0.5;
     const all = cities.map((c) => evaluate(c, { weights, mid, taste: q.taste, maxFlight, alerts, seoulHi, start: qs, end: qe }));
     return {
-      results: all.filter(isResult).sort((a, b) => b.score - a.score),
+      results: all.filter(isResult).sort((a, b) => b.score - a.score)
+        .map((r) => ({ ...r, shoulder: isShoulder(r.city, q.taste, weights.indexOf(Math.max(...weights)), qs.getFullYear(), seoulHi) })),
       excluded: all.filter(isExcluded),
       hidden: all.filter((r) => r === null).length,
       qDays: days, qStart: qs, rangeText: `${md(qs)}–${md(qe)}`,
@@ -414,6 +415,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
       <div className="perf" aria-hidden="true"><i /><i /></div>
       <div className="pbody">
         <p className="why">{whyLine(r, taste)}</p>
+        {r.shoulder && <p className="shoulder">🍃 이 도시 날씨 최고 시즌 바로 옆이라, 날씨는 괜찮고 덜 붐빌 수 있어요</p>}
         <Notes r={r} alertDate={alertDate} />
         <Festivals r={r} q={q} />
         <BookLinks r={r} q={q} rank={1} />
@@ -431,12 +433,13 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
       <summary>
         <span className="tbadge" style={{ ["--t" as string]: tempColor(r.hi) }}>{r.hi.toFixed(0)}°</span>
         <span className="nm"><b>{rank}. {r.city.name} {r.city.emoji}</b>
-          <span>{r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{alert ? " · ⚠️ 여행자제" : ""}</span>
+          <span>{r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{r.shoulder ? " · 🍃 덜 붐빌 때" : ""}{alert ? " · ⚠️ 여행자제" : ""}</span>
         </span>
         <span className="rk"><svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></span>
       </summary>
       <div className="body">
         <p className="why">{whyLine(r, taste)}</p>
+        {r.shoulder && <p className="shoulder">🍃 이 도시 날씨 최고 시즌 바로 옆이라, 날씨는 괜찮고 덜 붐빌 수 있어요</p>}
         <Notes r={r} alertDate={alertDate} />
         {open && <Festivals r={r} q={q} />}
         {open && <BookLinks r={r} q={q} rank={rank} />}

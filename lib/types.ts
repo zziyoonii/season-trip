@@ -20,5 +20,7 @@ export interface Result {
   score: number; seoul: number;
   weights: number[]; festivals: City["festivals"];
   notes: string[];          // 경고성 안내 (태풍 일부 겹침, 습도, 여행경보 2단계)
+  /** 숄더 시즌(최고 시즌 바로 옆 달이라 덜 붐빌 수 있음) */
+  shoulder?: boolean;
 }
 export interface Excluded { city: City; reasons: string[] }
