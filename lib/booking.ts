@@ -15,6 +15,11 @@ const AGODA_SLUG: Record<string, string> = {
   "하얼빈": "harbin-cn", "울란바토르": "ulaanbaatar-mn", "호놀룰루": "honolulu-hi-us",
 };
 
+/** 아고다 공식 파트너 링크용 도시 번호 (링크 만들기 도구에서 확인). 있으면 이걸 우선 써요 */
+const AGODA_CITY_ID: Record<string, number> = {
+  "삿포로": 3435,
+};
+
 export function flightUrl(code: string, start: string, end: string) {
   const ymd = (s: string) => s.slice(2).replace(/-/g, "");
   return `https://www.skyscanner.co.kr/transport/flights/icn/${code.toLowerCase()}/${ymd(start)}/${ymd(end)}/?adultsv2=1&cabinclass=economy`;
@@ -22,6 +27,10 @@ export function flightUrl(code: string, start: string, end: string) {
 
 /** affiliate: 제휴 링크인지 (제휴 고지 표시용) */
 export function hotelLink(city: string, start: string, end: string): { url: string; vendor: "agoda" | "booking"; affiliate: boolean } {
+  const id = AGODA_CITY_ID[city];
+  if (id) {
+    return { url: `https://www.agoda.com/partners/partnersearch.aspx?pcs=1&cid=${AGODA_CID}&hl=ko-kr&city=${id}&checkin=${start}&checkout=${end}&NumberofAdults=2&NumberofChildren=0&Rooms=1`, vendor: "agoda", affiliate: true };
+  }
   const slug = AGODA_SLUG[city];
   if (slug) {
     return { url: `https://www.agoda.com/ko-kr/city/${slug}.html?cid=${AGODA_CID}&checkIn=${start}&checkOut=${end}&adults=2&rooms=1`, vendor: "agoda", affiliate: true };
