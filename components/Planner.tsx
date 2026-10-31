@@ -6,7 +6,7 @@ import { drawShareImage } from "@/lib/share-image";
 import { planLeave, leaveRanges, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
-import type { AlertMap, City, Result, Taste } from "@/lib/types";
+import type { AlertMap, City, Result, Style, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
 const WD = "일월화수목금토";
@@ -28,6 +28,9 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   const [query, setQuery] = useState<Query | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [style, setStyle] = useState<"all" | Style>("all");
+  /** 연차 계획 카드에서 고른 여행지: 결과에서 맨 앞(탑승권)으로 보여줘요 */
+  const [pin, setPin] = useState<string | null>(null);
   const [holOpen, setHolOpen] = useState(false);
   const [calOpen, setCalOpen] = useState<null | "start" | "end">(null);
   const [shareFor, setShareFor] = useState<Result | null>(null);
@@ -61,9 +64,14 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
     };
   }
   // 출발 안내판이 마지막에 멈출 곳 = 실제 1순위
-  const target = useMemo(() => (pending ? compute(pending).results[0]?.city ?? null : null), [pending]); // eslint-disable-line react-hooks/exhaustive-deps
+  const target = useMemo(() => {
+    if (!pending) return null;
+    const rs = compute(pending).results;
+    return (pin && rs.find((r) => r.city.name === pin)?.city) || rs[0]?.city || null;
+  }, [pending, pin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function run(q: Query, scroll: boolean) {
+  function run(q: Query, scroll: boolean, pinCity: string | null = null) {
+    setPin(pinCity); setStyle("all");
     setPending(q);
     setLoading(true);
     if (scroll) setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -84,25 +92,31 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
     setTimeout(() => { setLeaveQ({ n: leaveN, deadline, taste }); setLoading(false); }, 1500);
   }
   // 계획 중 하나를 고르면 그 날짜로 일반 검색 결과(탑승권)를 보여줘요
-  function pickWindow(w: LeaveWindow) {
+  function pickWindow(w: LeaveWindow, city: string | null) {
     if (!taste) return;
     const a = iso(w.start), b = iso(w.end);
     track("leave_pick", { start: a, days: restDays(w), leave_used: w.used, half: !!w.half, taste });
     setMode("dates"); applyDates(a, b);
     const f = autoFlight(w.len);
-    run({ start: a, end: b, taste, flight: f }, true);
+    run({ start: a, end: b, taste, flight: f }, true, city);
   }
   const plans = useMemo(() => {
     if (!leaveQ) return null;
+    // 카드마다 같은 곳(예: 또 호놀룰루)이 나오지 않게, 앞 카드에서 나온 곳은 빼고 다음 순위를 보여줘요
+    const shown = new Set<string>();
     return planLeave(todayD, parseDate(leaveQ.deadline), leaveQ.n).map((p) => ({
       ...p,
       picks: p.windows.map((w) => {
         const { weights } = monthWeights(w.start, w.end);
         const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
         const f = autoFlight(w.len);
-        const best = cities.map((c) => evaluate(c, { weights, mid, taste: leaveQ.taste, maxFlight: f >= 25 ? 99 : f + 0.5, alerts, seoulHi, start: w.start, end: w.end }))
-          .filter(isResult).sort((x, y) => y.score - x.score)[0] ?? null;
-        return { w, best };
+        const ranked = cities.map((c) => evaluate(c, { weights, mid, taste: leaveQ.taste, maxFlight: f >= 25 ? 99 : f + 0.5, alerts, seoulHi, start: w.start, end: w.end }))
+          .filter(isResult).sort((x, y) => y.score - x.score);
+        const fresh = ranked.filter((r) => !shown.has(r.city.name));
+        const best = fresh[0] ?? ranked[0] ?? null;
+        if (best) shown.add(best.city.name);
+        const alts = ranked.filter((r) => r !== best).slice(0, 2);
+        return { w, best, alts };
       }),
     }));
   }, [leaveQ, cities, alerts, seoulHi]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -134,7 +148,12 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   }
 
   const out = useMemo(() => (query ? compute(query) : null), [query, cities, alerts, seoulHi]); // eslint-disable-line react-hooks/exhaustive-deps
-  const results = out?.results ?? [];
+  const allResults = out?.results ?? [];
+  const results = useMemo(() => {
+    const v = style === "all" ? allResults : allResults.filter((r) => r.city.styles?.includes(style));
+    const i = pin ? v.findIndex((r) => r.city.name === pin) : -1;
+    return i > 0 ? [v[i], ...v.slice(0, i), ...v.slice(i + 1)] : v;
+  }, [allResults, style, pin]);
 
   const holidayLabel = useMemo(() => {
     const hit = holidayOptions(todayD, false, 0).concat(holidayOptions(todayD, true, 5))
@@ -264,8 +283,9 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
           <span>{loading || !out ? "찾는 중…" : `${results.length}곳 찾았어요${out.hidden ? ` · 먼 곳 ${out.hidden}곳 숨김` : ""}`}</span>
         </div>
 
+        {!loading && out && query && allResults.length > 1 && <StyleChips all={allResults} value={style} onChange={(v) => { setStyle(v); setShowAll(false); track("style_pick", { style: v }); }} />}
         {loading || !out || !query ? <Loader codes={codes} target={target} label={`${TASTES[(taste ?? "warm")].name} 찾는 중`} /> : results.length === 0 ? (
-          <div className="empty">이 기간엔 원하는 날씨인 곳이 없어요.<br />날씨를 바꾸거나 비행시간을 늘려보세요.</div>
+          <div className="empty">{style !== "all" && allResults.length ? "이 스타일엔 맞는 곳이 없어요. 다른 스타일을 골라보세요." : <>이 기간엔 원하는 날씨인 곳이 없어요.<br />날씨를 바꾸거나 비행시간을 늘려보세요.</>}</div>
         ) : (
           <>
             <BoardingPass r={results[0]} taste={query.taste} rangeText={out.rangeText} alertDate={alertDate} q={query} onShare={() => { track("share_open", { city: results[0].city.name, taste: query.taste }); setShareFor(results[0]); }} />
@@ -328,16 +348,16 @@ function DateBtn({ label, value, err, onClick }: { label: string; value: string;
 
 /* ───────── 연차 계획 ───────── */
 
-function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindow; best: Result | null }[] }; onPick: (w: LeaveWindow) => void }) {
+function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindow; best: Result | null; alts: Result[] }[] }; onPick: (w: LeaveWindow, city: string | null) => void }) {
   const tag = plan.kind === "all" ? "🧳" : plan.kind === "split" ? "✌️" : plan.kind === "half" ? "🌆" : "⚡";
   return (
     <article className="plan">
       <header><span className="ptag" aria-hidden="true">{tag}</span><div><b>{plan.title}</b><span>{plan.desc}</span></div></header>
-      {plan.picks.map(({ w, best }) => (
-        <button key={iso(w.start)} type="button" className="trip" onClick={() => onPick(w)}>
+      {plan.picks.map(({ w, best, alts }) => (
+        <button key={iso(w.start)} type="button" className="trip" onClick={() => onPick(w, best?.city.name ?? null)}>
           <span className="when"><b>{dl(w.start)} – {dl(w.end)}</b><small>{fmtDays(restDays(w))} 쉬고 연차 {w.used}일</small><small className="lv">연차 쓰는 날 {leaveRanges(w)}</small></span>
           {best ? (
-            <span className="dest"><i aria-hidden="true">{best.city.emoji}</i><span><b>{best.city.name}</b><small>{best.hi.toFixed(0)}° · {best.city.flight}시간</small></span></span>
+            <span className="dest"><i aria-hidden="true">{best.city.emoji}</i><span><b>{best.city.name}</b><small>{best.hi.toFixed(0)}° · {best.city.flight}시간</small>{alts.length > 0 && <small className="alts">또는 {alts[0].city.name}</small>}</span></span>
           ) : <span className="dest none">맞는 곳이 없어요</span>}
           <span className="chev" aria-hidden="true">›</span>
         </button>
@@ -347,6 +367,19 @@ function PlanCard({ plan, onPick }: { plan: LeavePlan & { picks: { w: LeaveWindo
 }
 
 /* ───────── 결과 ───────── */
+
+const STYLES: { k: Style; label: string }[] = [{ k: "beach", label: "🏖️ 휴양" }, { k: "city", label: "🏙️ 도시" }, { k: "nature", label: "🏔️ 자연" }];
+/** 결과 위 취향 칩. 안 눌러도 되고(전체), 맞는 곳이 없는 스타일은 숨겨요 */
+function StyleChips({ all, value, onChange }: { all: Result[]; value: "all" | Style; onChange: (v: "all" | Style) => void }) {
+  const opts = STYLES.map((o) => ({ ...o, n: all.filter((r) => r.city.styles?.includes(o.k)).length })).filter((o) => o.n > 0);
+  if (opts.length < 2) return null;
+  return (
+    <div className="schips" role="group" aria-label="여행 스타일">
+      <button type="button" aria-pressed={value === "all"} onClick={() => onChange("all")}>전체</button>
+      {opts.map((o) => <button key={o.k} type="button" aria-pressed={value === o.k} onClick={() => onChange(o.k)}>{o.label} <small>{o.n}</small></button>)}
+    </div>
+  );
+}
 
 function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Result; taste: Taste; rangeText: string; alertDate: string; q: Query; onShare: () => void }) {
   const { city } = r;
