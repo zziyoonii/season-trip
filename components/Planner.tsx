@@ -4,7 +4,7 @@ import { TASTES, autoFlight, evaluate, isExcluded, isResult, monthWeights, seoul
 import { PUBLIC_HOLIDAYS, holidayOptions, iso, parseDate, addDays } from "@/lib/holidays";
 import { drawShareImage } from "@/lib/share-image";
 import { drawLeaveShareImage } from "@/lib/leave-share-image";
-import { planLeave, leaveRanges, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
+import { planLeave, leaveRanges, peakHint, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
 import type { AlertMap, City, Result, Style, Taste } from "@/lib/types";
@@ -366,6 +366,13 @@ function PlanCard({ plan, onPick, onShare }: { plan: PlanWithPicks; onPick: (w: 
           <span className="chev" aria-hidden="true">›</span>
         </button>
       ))}
+      {(() => {
+        // 연휴 피크 힌트는 카드당 하나만 (화면이 시끄럽지 않게)
+        const hit = plan.picks.map((pk) => ({ pk, h: peakHint(pk.w) })).find((v) => v.h);
+        if (!hit || !hit.h) return null;
+        const { h, pk } = hit;
+        return <button type="button" className="peakhint" onClick={() => { track("peak_hint_click", { kind: plan.kind }); onPick(h.window, pk.best?.city.name ?? null); }}>💡 {h.text} <span aria-hidden="true">›</span></button>;
+      })()}
       <button type="button" className="planshare" onClick={onShare}>📤 이 계획 자랑하기</button>
     </article>
   );

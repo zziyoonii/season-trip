@@ -366,3 +366,6 @@ button.dbox:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 .trip .dest small.alts{display:block;font-size:11.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .planshare{font:inherit;font-size:14px;font-weight:800;border:0;border-radius:12px;padding:11px;margin-top:2px;background:var(--orange-soft);color:var(--orange-ink);cursor:pointer}
 .planshare:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.peakhint{font:inherit;font-size:13px;font-weight:600;text-align:left;border:0;border-radius:12px;padding:10px 12px;background:transparent;color:var(--sub);cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.peakhint span{color:var(--muted);float:right}
+.peakhint:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

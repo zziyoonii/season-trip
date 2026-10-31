@@ -90,3 +90,43 @@ export function leaveRanges(w: LeaveWindow): string {
   const full = runs.map(([a, b]) => a.getTime() === b.getTime() ? md(a) : a.getMonth() === b.getMonth() ? `${md(a)}~${b.getDate()}` : `${md(a)}~${md(b)}`);
   return [w.half ? `${md(w.start)}\u00a0오후\u00a0반차` : "", ...full].filter(Boolean).join(", ");
 }
+
+/**
+ * 연휴 피크 힌트 (항공권 가격 데이터 없이 경험칙으로).
+ * - 연휴(공휴일이 낀 3일 이상 쉬는 날 묶음) 전날 출발 = 출국 피크 → 연휴 첫날 출발 권유 (연차도 아낌)
+ * - 연휴 마지막 날 귀국 = 귀국 피크 → 하루 일찍 귀국 권유
+ */
+export interface PeakHint { text: string; window: LeaveWindow }
+function holidayBlock(d: Date): { start: Date; end: Date } | null {
+  if (!isOff(d)) return null;
+  let s = new Date(d), e = new Date(d);
+  while (isOff(addDays(s, -1))) s = addDays(s, -1);
+  while (isOff(addDays(e, 1))) e = addDays(e, 1);
+  let hol = false;
+  for (let x = new Date(s); x <= e; x = addDays(x, 1)) if (PUBLIC_HOLIDAYS.has(iso(x))) hol = true;
+  return hol && dayNum(e) - dayNum(s) >= 2 ? { start: s, end: e } : null;
+}
+function rebuild(start: Date, end: Date): LeaveWindow {
+  let used = 0;
+  for (let d = new Date(start); d <= end; d = addDays(d, 1)) if (!isOff(d)) used++;
+  return { start, end, len: dayNum(end) - dayNum(start) + 1, used };
+}
+const mdw = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`;
+export function peakHint(w: LeaveWindow): PeakHint | null {
+  // 출발: 연휴 바로 전날이면 연휴 첫날로
+  const next = holidayBlock(addDays(w.start, 1));
+  if (!isOff(w.start) && next && dayNum(next.start) === dayNum(w.start) + 1) {
+    const nw = rebuild(next.start, w.end);
+    if (rest(nw) >= 2) {
+      const saved = w.used - nw.used;
+      return { text: `${mdw(next.start)} 당일 출발하면 덜 붐벼요${saved > 0 ? ` · ${saved === 0.5 ? "반차" : `연차 ${saved}일`} 아껴요` : ""}`, window: nw };
+    }
+  }
+  // 귀국: 연휴 마지막 날이면 하루 일찍
+  const blk = holidayBlock(w.end);
+  if (blk && dayNum(blk.end) === dayNum(w.end) && dayNum(w.end) - dayNum(w.start) >= 3) {
+    const nw = { ...w, end: addDays(w.end, -1), len: w.len - 1 };
+    return { text: `하루 일찍 ${mdw(nw.end)} 귀국하면 덜 붐벼요`, window: nw };
+  }
+  return null;
+}
