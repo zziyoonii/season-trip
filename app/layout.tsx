@@ -3,6 +3,8 @@ import Script from "next/script";
 import "./globals.css";
 
 // GA4 측정 ID는 공개돼도 되는 값이라 기본값으로 둬요. 로컬 개발(npm run dev)에서는 안 붙여요
+// AdSense 게시자 ID(ca-pub-…). 공개값이라 Vercel 환경변수 NEXT_PUBLIC_ADSENSE_CLIENT 에 넣으면 광고 스크립트가 붙어요
+const ADS_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || (process.env.NODE_ENV === "production" ? "G-HXYXYNVZET" : undefined);
 
 export const metadata: Metadata = {
@@ -23,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" />
+        {ADS_CLIENT && <meta name="google-adsense-account" content={ADS_CLIENT} />}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        {ADS_CLIENT && <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CLIENT}`} crossOrigin="anonymous" />}
       </head>
       <body>
         {children}

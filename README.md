@@ -18,6 +18,8 @@ npm run dev                  # http://localhost:3000
 | `DATA_GO_KR_KEY` | 공공데이터포털 일반 인증키(Decoding). 외교부 여행경보·특별여행주의보 | `data/alerts-snapshot.json`(2026.10.25) 사용 |
 | `GEMINI_API_KEY` | Google AI Studio 키. 그 기간 실제 행사를 구글 검색으로 찾음 | 매년 반복되는 대표 행사만 표시 |
 | `NEXT_PUBLIC_GA_ID` | GA4 측정 ID (G-로 시작) | GA 안 붙음 |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | AdSense 게시자 ID (`ca-pub-…`). 넣으면 광고 스크립트·`/ads.txt` 생성 | 광고 없음 |
+| `NEXT_PUBLIC_ADSENSE_SLOT` | AdSense 광고 단위 ID. 결과·연차 계획 맨 아래 한 칸 | 광고 칸 없음 |
 | `GEMINI_MODEL` | 선택. 기본 `gemini-3.5-flash-lite`, 더 정확하게는 `gemini-3.8-flash` | |
 
 ## Vercel 배포

@@ -7,6 +7,7 @@ import { drawLeaveShareImage } from "@/lib/leave-share-image";
 import { planLeave, leaveRanges, peakHint, rest as restDays, fmtDays, type LeavePlan, type LeaveWindow } from "@/lib/leave";
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
+import AdSlot from "./AdSlot";
 import type { AlertMap, City, Result, Style, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
@@ -271,6 +272,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
             <>
               <div className="sumline"><h2>연차 계획</h2><span>연차 {leaveQ?.n}일 · {leaveQ && dl(parseDate(leaveQ.deadline))}까지</span></div>
               <div className="plans">{plans.map((p) => <PlanCard key={p.kind} plan={p} onPick={pickWindow} onShare={() => { track("plan_share_open", { kind: p.kind, leave_used: p.windows.reduce((s2, w) => s2 + w.used, 0) }); setPlanShare(p); }} />)}</div>
+              <AdSlot key={`p${leaveQ?.n}${leaveQ?.deadline}`} />
             </>
           )
         ) : !query && !loading ? (
@@ -305,6 +307,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
             <ul>{out.excluded.map((x) => <li key={x.city.name}><b>{x.city.name}</b><span>{x.reasons.join(" · ")}</span></li>)}</ul>
           </details>
         )}
+        {out && !loading && <AdSlot key={`r${query?.start}${query?.end}`} />}
         </>
         )}
         <p className="foot">
