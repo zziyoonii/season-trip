@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { ADS_CLIENT, ADS_SLOT } from "@/lib/ads";
 
 declare global { interface Window { adsbygoogle?: unknown[] } }
 
@@ -8,8 +9,8 @@ declare global { interface Window { adsbygoogle?: unknown[] } }
  * 탑승권·연차 카드 사이에는 넣지 않고, 결과 맨 아래에만 둬요.
  */
 export default function AdSlot({ slot }: { slot?: string }) {
-  const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
-  const id = slot || process.env.NEXT_PUBLIC_ADSENSE_SLOT;
+  const client = ADS_CLIENT;
+  const id = slot || ADS_SLOT;
   const pushed = useRef(false);
   useEffect(() => {
     if (!client || !id || pushed.current) return;

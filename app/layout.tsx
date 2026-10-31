@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import { ADS_CLIENT } from "@/lib/ads";
 
 // GA4 측정 ID는 공개돼도 되는 값이라 기본값으로 둬요. 로컬 개발(npm run dev)에서는 안 붙여요
-// AdSense 게시자 ID(ca-pub-…). 공개값이라 Vercel 환경변수 NEXT_PUBLIC_ADSENSE_CLIENT 에 넣으면 광고 스크립트가 붙어요
-const ADS_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || (process.env.NODE_ENV === "production" ? "G-HXYXYNVZET" : undefined);
 
 export const metadata: Metadata = {
