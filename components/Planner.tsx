@@ -403,7 +403,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
   return (
     <article className="pass">
       <div className="ptop">
-        <div className="prow"><span className="k">딱 그때 날씨 좋은 곳</span></div>
+        <div className="prow"><span className="k">딱 그때 날씨 좋은 곳</span>{r.shoulder && <span className="calmpill">🍃 덜 붐빌 때</span>}</div>
         <div className="city"><h3>{city.name} <span aria-hidden="true">{city.emoji}</span></h3><span>{city.country}</span></div>
         <div className="route" aria-label={`인천에서 ${city.name}까지 약 ${city.flight}시간`}>
           <div><b>ICN</b><span>인천</span></div>
@@ -419,7 +419,7 @@ function BoardingPass({ r, taste, rangeText, alertDate, q, onShare }: { r: Resul
       <div className="perf" aria-hidden="true"><i /><i /></div>
       <div className="pbody">
         <p className="why">{whyLine(r, taste)}</p>
-        {r.shoulder && <p className="shoulder">🍃 이 도시 날씨 최고 시즌 바로 옆이라, 날씨는 괜찮고 덜 붐빌 수 있어요</p>}
+        {r.shoulder && <p className="shoulder"><b>🍃 덜 붐빌 때예요</b> 이 도시 날씨 최고 시즌 바로 옆 달이라, 날씨는 괜찮고 사람은 덜할 수 있어요</p>}
         <Notes r={r} alertDate={alertDate} />
         <Festivals r={r} q={q} />
         <BookLinks r={r} q={q} rank={1} />
@@ -436,14 +436,14 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
     <details className="item" onToggle={(ev) => { const o = (ev.target as HTMLDetailsElement).open; setOpen(o); if (o) track("result_open", { city: r.city.name, rank }); }}>
       <summary>
         <span className="tbadge" style={{ ["--t" as string]: tempColor(r.hi) }}>{r.hi.toFixed(0)}°</span>
-        <span className="nm"><b>{rank}. {r.city.name} {r.city.emoji}</b>
-          <span>{r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{r.shoulder ? " · 🍃 덜 붐빌 때" : ""}{alert ? " · ⚠️ 여행자제" : ""}</span>
+        <span className="nm"><b>{rank}. {r.city.name} {r.city.emoji}{r.shoulder && <i className="calmtag">🍃 덜 붐빌 때</i>}</b>
+          <span>{r.city.flight}시간 · 서울보다 {seoulDiff(r.seoul)}{alert ? " · ⚠️ 여행자제" : ""}</span>
         </span>
         <span className="rk"><svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></span>
       </summary>
       <div className="body">
         <p className="why">{whyLine(r, taste)}</p>
-        {r.shoulder && <p className="shoulder">🍃 이 도시 날씨 최고 시즌 바로 옆이라, 날씨는 괜찮고 덜 붐빌 수 있어요</p>}
+        {r.shoulder && <p className="shoulder"><b>🍃 덜 붐빌 때예요</b> 이 도시 날씨 최고 시즌 바로 옆 달이라, 날씨는 괜찮고 사람은 덜할 수 있어요</p>}
         <Notes r={r} alertDate={alertDate} />
         {open && <Festivals r={r} q={q} />}
         {open && <BookLinks r={r} q={q} rank={rank} />}
