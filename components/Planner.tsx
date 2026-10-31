@@ -8,6 +8,7 @@ import { planLeave, leaveRanges, peakHint, rest as restDays, fmtDays, type Leave
 import { track } from "@/lib/ga";
 import ScrollPlane from "./ScrollPlane";
 import AdSlot from "./AdSlot";
+import { flightUrl, hotelLink } from "@/lib/booking";
 import type { AlertMap, City, Result, Style, Taste } from "@/lib/types";
 
 const PLANE_D = "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z";
@@ -451,25 +452,18 @@ function ResultItem({ r, rank, taste, alertDate, q }: { r: Result; rank: number;
   );
 }
 
-/**
- * 항공권·숙소 검색으로 바로 넘겨요. 지금은 일반 검색 링크(수익 없음)로 클릭 수요를 먼저 보고,
- * 제휴 승인(아고다 파트너스 등)이 나면 flightUrl/hotelUrl 만 제휴 링크로 바꾸면 돼요. (로고는 쓰지 않고 글자만)
- */
-function flightUrl(code: string, start: string, end: string) {
-  const ymd = (s: string) => s.slice(2).replace(/-/g, "");
-  return `https://www.skyscanner.co.kr/transport/flights/icn/${code.toLowerCase()}/${ymd(start)}/${ymd(end)}/?adultsv2=1&cabinclass=economy`;
-}
-// 아고다는 도시 이름으로는 검색이 안 채워져서(도시 고유번호 필요) 일단 부킹닷컴. 아고다 파트너스 승인 후 도시 번호로 교체
-function hotelUrl(city: string, start: string, end: string) {
-  return `https://www.booking.com/searchresults.ko.html?ss=${encodeURIComponent(city)}&checkin=${start}&checkout=${end}&group_adults=2&no_rooms=1&group_children=0`;
-}
+/** 항공권·숙소 검색으로 바로 넘겨요. 숙소는 아시아 주요 도시면 아고다 제휴 링크 (로고 없이 글자만) */
 function BookLinks({ r, q, rank }: { r: Result; q: Query; rank: number }) {
+  const h = hotelLink(r.city.name, q.start, q.end);
   const p = { city: r.city.name, rank };
   return (
-    <div className="book">
-      <a href={flightUrl(r.city.code, q.start, q.end)} target="_blank" rel="noopener" onClick={() => track("flight_click", p)}>✈️ 항공권 보기</a>
-      <a href={hotelUrl(r.city.name, q.start, q.end)} target="_blank" rel="noopener" onClick={() => track("hotel_click", p)}>🏨 숙소 보기</a>
-    </div>
+    <>
+      <div className="book">
+        <a href={flightUrl(r.city.code, q.start, q.end)} target="_blank" rel="noopener" onClick={() => track("flight_click", p)}>✈️ 항공권 보기</a>
+        <a href={h.url} target="_blank" rel={h.affiliate ? "noopener sponsored" : "noopener"} onClick={() => track("hotel_click", { ...p, vendor: h.vendor })}>🏨 숙소 보기</a>
+      </div>
+      {h.affiliate && <p className="aff">숙소 링크는 제휴 링크예요. 예약하면 나가요가 수수료를 받을 수 있고, 가격은 같아요.</p>}
+    </>
   );
 }
 
