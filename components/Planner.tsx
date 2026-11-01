@@ -16,10 +16,10 @@ const WD = "일월화수목금토";
 const md = (d: Date) => `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 const dl = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}(${WD[d.getDay()]})`;
 
-interface Props { cities: City[]; seoulHi: number[]; alerts: AlertMap; alertDate: string; alertLive: boolean; today: string; initialMode?: "dates" | "leave" }
+interface Props { cities: City[]; seoulHi: number[]; alerts: AlertMap; alertDate: string; alertLive: boolean; today: string; initialMode?: "dates" | "leave"; children?: React.ReactNode }
 interface Query { start: string; end: string; taste: Taste; flight: number }
 
-export default function Planner({ cities, seoulHi, alerts, alertDate, today, initialMode = "leave" }: Props) {
+export default function Planner({ cities, seoulHi, alerts, alertDate, today, initialMode = "leave", children }: Props) {
   const todayD = parseDate(today);
 
   // 처음엔 비어 있어요. 날짜·날씨를 고르고 "찾기"를 눌러야 결과가 나와요
@@ -311,6 +311,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
         {out && !loading && <AdSlot key={`r${query?.start}${query?.end}`} />}
         </>
         )}
+        {children}
         <p className="foot">
           기후 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · 여행경보 외교부({alertDate}) · 출발 전 <a href="https://www.0404.go.kr/" target="_blank" rel="noopener">해외안전여행</a> 확인
         </p>

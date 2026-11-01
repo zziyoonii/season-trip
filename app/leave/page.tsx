@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Planner from "@/components/Planner";
+import About from "@/components/About";
 import { loadPageProps } from "@/lib/page-props";
 
 export const revalidate = 86400;
@@ -19,5 +20,5 @@ export const metadata: Metadata = {
 
 /** /leave 로 들어오면 🔥 연차 소진 탭이 바로 열려요 (GA에서도 이 주소로 따로 잡혀요) */
 export default async function Leave() {
-  return <Planner {...await loadPageProps()} initialMode="leave" />;
+  return <Planner {...await loadPageProps()} initialMode="leave"><About /></Planner>;
 }
