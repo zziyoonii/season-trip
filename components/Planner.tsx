@@ -43,7 +43,9 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   const [mode, setMode] = useState<"dates" | "leave">(initialMode);
   const [leaveN, setLeaveN] = useState(0);
   const [deadline, setDeadline] = useState(`${today.slice(0, 4)}-12-31`);
-  const [leaveQ, setLeaveQ] = useState<{ n: number; deadline: string; taste: Taste } | null>(null);
+  /** 꼭 출근해야 하는 날(회의·당직·마감 등). 연차 계획에서 빼요 */
+  const [workDays, setWorkDays] = useState<string[]>([]);
+  const [leaveQ, setLeaveQ] = useState<{ n: number; deadline: string; taste: Taste; work: string[] } | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const codes = useMemo(() => cities.map((c) => c.code), [cities]);
 
@@ -91,10 +93,10 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
   const leaveReady = leaveN >= 0.5 && !!taste && !!deadline && parseDate(deadline) > todayD;
   function planSearch() {
     if (!leaveReady || !taste) return;
-    track("leave_plan", { leave_days: leaveN, deadline, taste });
+    track("leave_plan", { leave_days: leaveN, deadline, taste, work_days: workDays.length });
     setLoading(true);
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    setTimeout(() => { setLeaveQ({ n: leaveN, deadline, taste }); setLoading(false); }, 1500);
+    setTimeout(() => { setLeaveQ({ n: leaveN, deadline, taste, work: workDays }); setLoading(false); }, 1500);
   }
   // 계획 중 하나를 고르면 그 날짜로 일반 검색 결과(탑승권)를 보여줘요
   function pickWindow(w: LeaveWindow, city: string | null) {
@@ -109,7 +111,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
     if (!leaveQ) return null;
     // 카드마다 같은 곳(예: 또 호놀룰루)이 나오지 않게, 앞 카드에서 나온 곳은 빼고 다음 순위를 보여줘요
     const shown = new Set<string>();
-    return planLeave(todayD, parseDate(leaveQ.deadline), leaveQ.n).map((p) => ({
+    return planLeave(todayD, parseDate(leaveQ.deadline), leaveQ.n, leaveQ.work).map((p) => ({
       ...p,
       picks: p.windows.map((w) => {
         const { weights } = monthWeights(w.start, w.end);
@@ -202,6 +204,10 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
                 <DateBox label="소진 기한" value={deadline} min={today} onChange={setDeadline} />
                 <div className="days"><span className="hint">기한 안의 평일에만 연차를 쓰고, 기한 뒤 주말·공휴일까지 이어서 쉬게 짜드려요</span></div>
               </div>
+              <div className="block">
+                <p className="lab">꼭 출근해야 하는 날 <small className="labsub">선택</small></p>
+                <WorkDays value={workDays} min={today} onChange={(v) => { setWorkDays(v); track("work_days_set", { count: v.length }); }} />
+              </div>
             </>
           ) : (
           <>
@@ -246,7 +252,7 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
               <p className="gohint" aria-live="polite">{leaveN < 0.5 ? "남은 연차를 알려주세요" : !taste ? "원하는 날씨를 골라주세요" : "준비 완료! 눌러서 계획을 받아보세요"}</p>
             </div>
           )}
-          {mode === "leave" && leaveQ && (leaveQ.n !== leaveN || leaveQ.deadline !== deadline || leaveQ.taste !== taste) && (
+          {mode === "leave" && leaveQ && (leaveQ.n !== leaveN || leaveQ.deadline !== deadline || leaveQ.taste !== taste || leaveQ.work.join() !== workDays.join()) && (
             <div className="block"><button type="button" className="go" disabled={!leaveReady || loading} onClick={planSearch}>바뀐 조건으로 다시 짜기</button></div>
           )}
 
@@ -268,10 +274,10 @@ export default function Planner({ cities, seoulHi, alerts, alertDate, today, ini
               <p>남은 연차와 원하는 날씨만 알려주시면<br />주말·공휴일을 붙여 가장 길게 쉬는 계획과 그때 날씨 좋은 곳을 찾아드려요.</p>
             </div>
           ) : plans.length === 0 ? (
-            <div className="empty">기한 안에 쓸 수 있는 평일이 부족해요.<br />소진 기한을 늘려보세요.</div>
+            <div className="empty">{leaveQ && leaveQ.work.length > 0 ? <>출근해야 하는 날을 빼고 나니 붙여 쉴 수 있는 구간이 없어요.<br />소진 기한을 늘리거나 출근일을 줄여보세요.</> : <>기한 안에 쓸 수 있는 평일이 부족해요.<br />소진 기한을 늘려보세요.</>}</div>
           ) : (
             <>
-              <div className="sumline"><h2>연차 계획</h2><span>연차 {leaveQ?.n}일 · {leaveQ && dl(parseDate(leaveQ.deadline))}까지</span></div>
+              <div className="sumline"><h2>연차 계획</h2><span>연차 {leaveQ?.n}일 · {leaveQ && dl(parseDate(leaveQ.deadline))}까지{leaveQ && leaveQ.work.length > 0 ? ` · 출근일 ${leaveQ.work.length}일 제외` : ""}</span></div>
               <div className="plans">{plans.map((p) => <PlanCard key={p.kind} plan={p} onPick={pickWindow} onShare={() => { track("plan_share_open", { kind: p.kind, leave_used: p.windows.reduce((s2, w) => s2 + w.used, 0) }); setPlanShare(p); }} />)}</div>
               <AdSlot key={`p${leaveQ?.n}${leaveQ?.deadline}`} />
             </>
@@ -341,6 +347,37 @@ function DateBox({ label, value, min, err, onChange }: { label: string; value: s
         onChange={(ev) => ev.target.value && onChange(ev.target.value)}
         onClick={(ev) => { try { (ev.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* 지원 안 하면 기본 동작 */ } }} />
     </label>
+  );
+}
+
+/** 꼭 출근해야 하는 날 고르기: 날짜를 하나씩 추가하고, 칩을 누르면 빼요 */
+const MAX_WORK_DAYS = 20;
+function WorkDays({ value, min, onChange }: { value: string[]; min: string; onChange: (v: string[]) => void }) {
+  const add = (v: string) => {
+    if (!v || v < min || value.includes(v) || value.length >= MAX_WORK_DAYS) return;
+    onChange([...value, v].sort());
+  };
+  return (
+    <>
+      {value.length > 0 && (
+        <ul className="wdchips" aria-label="출근해야 하는 날 목록">
+          {value.map((v) => (
+            <li key={v}>
+              <button type="button" className="wdchip" aria-label={`${dl(parseDate(v))} 출근일 빼기`} onClick={() => onChange(value.filter((x) => x !== v))}>
+                {dl(parseDate(v))}<span aria-hidden="true">×</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label className="hollink wdadd">
+        <span aria-hidden="true">＋</span> {value.length ? "날짜 더 추가" : "출근일 추가"}
+        <input type="date" value="" min={min} aria-label="출근해야 하는 날 추가" disabled={value.length >= MAX_WORK_DAYS}
+          onChange={(ev) => add(ev.target.value)}
+          onClick={(ev) => { try { (ev.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* 지원 안 하면 기본 동작 */ } }} />
+      </label>
+      <div className="days"><span className="hint">회의·당직·마감처럼 쉴 수 없는 날은 빼고 짜드려요 (주말도 가능)</span></div>
+    </>
   );
 }
 

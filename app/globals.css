@@ -307,6 +307,16 @@ html,body{height:100%;overflow:hidden}
 }
 @media (prefers-reduced-motion:reduce){.splane .sbadge,.splane .sdone,.splane svg{transition:none}}
 
+/* 연차 모드: 꼭 출근해야 하는 날 */
+.wdchips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 2px;padding:0}
+.wdchip{font:inherit;display:inline-flex;align-items:center;gap:6px;border:0;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 10px 6px 12px;font-size:13.5px;font-weight:700;cursor:pointer}
+.wdchip span{font-size:15px;line-height:1;opacity:.7}
+.wdchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wdadd{position:relative;overflow:hidden;display:inline-flex}
+.wdadd:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.wdadd input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;border:0}
+.wdadd input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+
 /* 날짜 칸: 보이는 건 "12월 25일 (금)", 실제 입력은 위에 투명하게 */
 .dbox{position:relative}
 .dbox .dval{font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
